@@ -7,11 +7,9 @@ import (
 	game "great-sword/game/world"
 	"image/color"
 	"log"
-	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 var (
@@ -44,28 +42,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 		screen.Fill(color.RGBA{30, 30, 30, 255})
 
-		speed := math.Sqrt(p.Speed.Vx*p.Speed.Vx + p.Speed.Vy*p.Speed.Vy)
-		intensity := uint8(math.Min(255, speed/2))
+		centerX := p.Position.Px + common.PlayerSize/2
+		centerY := p.Position.Py + common.PlayerSize/2
 
-		vector.FillRect(
-			screen,
-			float32(p.Position.Px),
-			float32(p.Position.Py),
-			common.PlayerSize,
-			common.PlayerSize,
-			color.RGBA{0, 255, 0, intensity},
-			true,
-		)
+		for _, PlauerHe := range g.world.SearchEntities("playerHead") {
+			head := PlauerHe.(*player.PlayerHead)
 
-		vector.FillRect(
-			screen,
-			float32(p.Position.Px),
-			float32(p.Position.Py),
-			common.PlayerSize,
-			common.PlayerSize,
-			color.RGBA{255, 255, 255, 255},
-			true,
-		)
+			player.DrawRotatedRect(screen, centerX, centerY, common.PlayerHeadSize, common.PlayerHeadSize, head.Angle, color.RGBA{200, 0, 0, 255})
+			player.DrawRotatedRect(screen, centerX, centerY, common.PlayerHeadSize, common.PlayerHeadSize, head.Angle, color.RGBA{255, 180, 180, 255})
+
+		}
 	}
 }
 
@@ -81,6 +67,9 @@ func main() {
 
 	world.AddEntity(
 		player.NewPlayerLeg(),
+	)
+	world.AddEntity(
+		player.NewPlayerHead(),
 	)
 
 	g := &Game{
