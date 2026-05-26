@@ -3,6 +3,7 @@ package player
 import (
 	"great-sword/game"
 	"great-sword/game/common"
+
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -11,6 +12,7 @@ import (
 var _ game.Entity = (*PlayerHead)(nil)
 
 type PlayerHead struct {
+	PositionHead    common.PointPlayer
 	Angle           float64
 	AngularVelocity float64
 }
@@ -58,11 +60,20 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 		p.Angle += 360
 	}
 
+	for _, entity := range woroldWiev.SearchEntities("playerLeg") {
+		pL := entity.(*PlayerLeg)
+
+		centerX := pL.Position.Px + common.PlayerSize/2
+		centerY := pL.Position.Py + common.PlayerSize/2
+
+		p.PositionHead.Px = centerX
+		p.PositionHead.Py = centerY
+	}
+
 	return false
 }
 
 func (p *PlayerHead) Draw(screen *ebiten.Image) {
-
 }
 
 func (p *PlayerHead) Tag() string {

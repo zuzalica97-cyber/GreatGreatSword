@@ -1,23 +1,24 @@
 package common
 
 const (
-	ScreenWidth    = 800
-	ScreenHeight   = 600
-	PlayerSize     = 25
-	PlayerHeadSize = 25
+	ScreenWidth    = 1100
+	ScreenHeight   = 900
+	PlayerSize     = 40
+	PlayerHeadSize = 40
 
-	MaxSpeed     = 300.0
-	Acceleration = 400.0
-	Deceleration = 600.0
+	Acceleration = 500.0
+	Deceleration = 300.0
 
-	HeadRotationSpeed = 360.0
-	HeadAcceleration  = 800.0
-	HeadDeceleration  = 300.0
+	HeadAcceleration = 500.0
+	HeadDeceleration = 200.0
 
-	SwordSizeLower           = 60
-	SwordSizeUpper           = 30
-	SwordAttachmentSmoothing = 0.85
+	SwordAttachmentWidth     = 130
+	SwordAttachmentHeight    = 50
+	SwordAttachmentSmoothing = 0.6
 )
+
+var MaxSpeed = 300.0
+var HeadRotationSpeed = 450.0
 
 type PointPlayer struct {
 	Px, Py float64
