@@ -160,8 +160,8 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 			offsetY = (common.ScreenHeight - maxY) * 15.0
 		}
 
-		b.Position.Px += offsetX * 0.05
-		b.Position.Py += offsetY * 0.05
+		b.Position.Px += offsetX * 0.025
+		b.Position.Py += offsetY * 0.025
 
 		Leg.Speed.Vx += offsetX
 		Leg.Speed.Vy += offsetY

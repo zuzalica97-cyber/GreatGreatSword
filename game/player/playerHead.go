@@ -74,6 +74,7 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 }
 
 func (p *PlayerHead) Draw(screen *ebiten.Image) {
+
 }
 
 func (p *PlayerHead) Tag() string {
