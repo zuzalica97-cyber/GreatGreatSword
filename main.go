@@ -52,9 +52,50 @@ func NewGame(world *game.World) *Game {
 	return g
 }
 
+func (g *Game) ResetGame() {
+	common.Score = 0
+
+	for _, entity := range g.world.SearchEntities("playerLeg") {
+		leg := entity.(*player.PlayerLeg)
+
+		leg.Position.Px = common.ScreenWidth/2 - common.PlayerSize/2
+		leg.Position.Py = common.ScreenHeight/2 - common.PlayerSize/2
+		leg.Speed.Vx = 0
+		leg.Speed.Vy = 0
+
+		for _, entity := range g.world.SearchEntities("playerHead") {
+			head := entity.(*player.PlayerHead)
+
+			head.Angle = 0
+			head.AngularVelocity = 0
+
+			for _, entity := range g.world.SearchEntities("blueSword") {
+				sword := entity.(*swords.BlueSword)
+
+				sword.UpdateAttachmentTarget(g.world)
+				sword.Position.Px = sword.TargetX
+				sword.Position.Py = sword.TargetY
+				sword.Angle = sword.TargetAngle
+
+				for _, entity := range g.world.SearchEntities("pathetic") {
+					path := entity.(*enemy.Pathetic)
+
+					path.Paths = make([]enemy.OnePath, 0)
+				}
+			}
+		}
+	}
+
+}
+
 func (g *Game) Update() error {
 	if g.gameOver {
 		return nil
+	}
+
+	if common.PlayerHelth <= 0 {
+		g.ResetGame()
+		common.PlayerHelth = common.MaxPlayerHelth
 	}
 
 	for _, entity := range g.world.Entities() {
@@ -133,6 +174,24 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	}
 
+	for _, entity := range g.world.SearchEntities("hater") {
+		h := entity.(*enemy.Haters)
+
+		for _, enemy := range h.HatersMass {
+			vector.FillRect(
+				screen,
+				float32(enemy.HX),
+				float32(enemy.HY),
+				common.HaterSize,
+				common.HaterSize,
+				color.RGBA{180, 150, 150, 255},
+				true,
+			)
+
+		}
+
+	}
+
 	scoreStr := fmt.Sprint("SCORE: ", common.Score)
 	textIng := ebiten.NewImage(400, 80)
 	ebitenutil.DebugPrintAt(textIng, scoreStr, 10, 10)
@@ -141,6 +200,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	scoreOp.GeoM.Scale(3.0, 3.0)
 	scoreOp.GeoM.Translate(common.ScreenWidth-250, 10)
 	screen.DrawImage(textIng, scoreOp)
+
+	helthStr := fmt.Sprint("HELTH: ", common.PlayerHelth)
+	helthIng := ebiten.NewImage(400, 80)
+	ebitenutil.DebugPrintAt(helthIng, helthStr, 10, 10)
+
+	helthOp := &ebiten.DrawImageOptions{}
+	helthOp.GeoM.Scale(3.0, 3.0)
+	helthOp.GeoM.Translate(common.ScreenWidth-250, 70)
+	screen.DrawImage(helthIng, helthOp)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -164,6 +232,9 @@ func main() {
 	)
 	world.AddEntity(
 		enemy.NewPathetic(),
+	)
+	world.AddEntity(
+		enemy.NewHaters(),
 	)
 
 	g := NewGame(world)
