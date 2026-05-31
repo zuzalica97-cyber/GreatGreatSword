@@ -9,7 +9,7 @@ const (
 	Acceleration = 500.0
 	Deceleration = 300.0
 
-	HeadAcceleration = 500.0
+	HeadAcceleration = 1000.0
 	HeadDeceleration = 800.0
 
 	SwordAttachmentWidth     = 165
@@ -20,8 +20,17 @@ const (
 	PatheticBaseSpeed = 50
 	PatheticMaxSpeed  = 300
 	PatheticDistanse  = 450
+	PatheticDamage    = 15
+
+	HaterSize           = 50
+	HaterBaseSpeed      = 50
+	HaterMaxSpeed       = 300
+	HaterDistanse       = 300
+	HaitersBolletDamage = 10
 )
 
+var PlayerHelth = MaxPlayerHelth
+var MaxPlayerHelth = 100
 var MaxSpeed = 300.0
 var HeadRotationSpeed = 450.0
 var Score int = 0

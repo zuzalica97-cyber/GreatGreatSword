@@ -15,6 +15,11 @@ type PlayerHead struct {
 	PositionHead    common.PointPlayer
 	Angle           float64
 	AngularVelocity float64
+
+	BoostTimer     float64
+	BoostActive    bool
+	NormalSpeed    float64
+	NormalROTSPEED float64
 }
 
 func NewPlayerHead() *PlayerHead {
@@ -25,6 +30,7 @@ func NewPlayerHead() *PlayerHead {
 }
 
 func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
+
 	dt := 1.0 / 60.0
 
 	rotationInput := 0.0

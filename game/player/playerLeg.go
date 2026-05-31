@@ -28,6 +28,23 @@ func NewPlayerLeg() *PlayerLeg {
 	}
 }
 
+func (p *PlayerLeg) ResetGame(world game.WorldView) {
+	common.Score = 0
+
+	p.Position.Px = common.ScreenWidth/2 - common.PlayerSize/2
+	p.Position.Py = common.ScreenHeight/2 - common.PlayerSize/2
+	p.Speed.Vx = 0
+	p.Speed.Vy = 0
+
+	for _, entity := range world.SearchEntities("playerHead") {
+		head := entity.(*PlayerHead)
+
+		head.Angle = 0
+		head.AngularVelocity = 0
+
+	}
+}
+
 func clamp(value, min, max float64) float64 {
 	if value < min {
 		return min
@@ -39,6 +56,7 @@ func clamp(value, min, max float64) float64 {
 }
 
 func (p *PlayerLeg) Update(worldView game.WorldView) bool {
+
 	dt := 1.0 / 60.0
 
 	moveX, moveY := 0.0, 0.0
