@@ -54,6 +54,9 @@ func NewGame(world *game.World) *Game {
 
 func (g *Game) ResetGame() {
 	common.Score = 0
+	common.Valwe = 3
+	common.PatheticDamage = common.PathiticNormalDamage
+	common.PatheticBaseSpeed = common.PatheticNormalSpeed
 
 	for _, entity := range g.world.SearchEntities("playerLeg") {
 		leg := entity.(*player.PlayerLeg)
@@ -81,6 +84,7 @@ func (g *Game) ResetGame() {
 					path := entity.(*enemy.Pathetic)
 
 					path.Paths = make([]enemy.OnePath, 0)
+
 				}
 			}
 		}
@@ -154,7 +158,21 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, entity := range g.world.SearchEntities("blueSword") {
 		s := entity.(*swords.BlueSword)
 
-		player.DrawRotatedRect(screen, s.Position.Px, s.Position.Py, common.SwordAttachmentWidth, common.SwordAttachmentHeight, s.Angle, color.RGBA{0, 100, 200, 255})
+		colorSword := color.RGBA{0, 100, 200, 255}
+
+		if player.ForwardActive {
+			colorSword = color.RGBA{50, 200, 200, 255}
+		}
+
+		if player.BoostActive {
+			colorSword = color.RGBA{200, 50, 50, 255}
+		}
+
+		if player.BoostActive && player.ForwardActive {
+			colorSword = color.RGBA{200, 200, 50, 255}
+		}
+
+		player.DrawRotatedRect(screen, s.Position.Px, s.Position.Py, common.SwordAttachmentWidth, common.SwordAttachmentHeight, s.Angle, colorSword)
 	}
 	for _, entity := range g.world.SearchEntities("pathetic") {
 		p := entity.(*enemy.Pathetic)
