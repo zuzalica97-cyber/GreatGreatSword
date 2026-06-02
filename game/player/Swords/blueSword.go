@@ -146,34 +146,44 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 			fmt.Println(maxX)
 		}
 
+		var Mnogitel = 15.0
+
+		var gool = 1.0
+
+		if player.ForwardActive {
+			gool = 10.0
+			Mnogitel = 0.05
+		}
+
+		if player.ForwardActive && player.BoostActive {
+			gool = 15.0
+			Mnogitel = 0.05
+		}
+
 		offsetX := 0.0
 		offsetY := 0.0
 
 		if minX < 0 {
-			offsetX = -minX * 15.0
+			offsetX = -minX * Mnogitel
 		} else if maxX > common.ScreenWidth {
-			offsetX = (common.ScreenWidth - maxX) * 15.0
+			offsetX = (common.ScreenWidth - maxX) * Mnogitel
 		}
 		if minY < 0 {
-			offsetY = -minY * 15.0
+			offsetY = -minY * Mnogitel
 		} else if maxY > common.ScreenHeight {
-			offsetY = (common.ScreenHeight - maxY) * 15.0
+			offsetY = (common.ScreenHeight - maxY) * Mnogitel
 		}
 
 		b.Position.Px += offsetX * 0.025
 		b.Position.Py += offsetY * 0.025
 
-		Leg.Speed.Vx += offsetX
-		Leg.Speed.Vy += offsetY
+		Leg.Speed.Vx += offsetX * gool
+		Leg.Speed.Vy += offsetY * gool
 	}
 
 }
 
 func (b *BlueSword) Update(worldView game.WorldView) bool {
-
-	if ebiten.IsKeyPressed(ebiten.KeyI) {
-		fmt.Println(b.Position.Px)
-	}
 
 	b.UpdateAttachmentTarget(worldView)
 

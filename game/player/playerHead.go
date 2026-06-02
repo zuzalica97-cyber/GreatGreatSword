@@ -30,8 +30,13 @@ func NewPlayerHead() *PlayerHead {
 }
 
 func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
-
 	dt := 1.0 / 60.0
+
+	currentRotSpeed := common.HeadRotationSpeed
+
+	if BoostActive {
+		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)
+	}
 
 	rotationInput := 0.0
 
@@ -57,7 +62,12 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 		}
 	}
 
-	p.AngularVelocity = clamp(p.AngularVelocity, -common.HeadRotationSpeed, common.HeadRotationSpeed)
+	if p.AngularVelocity > currentRotSpeed {
+		p.AngularVelocity = currentRotSpeed
+	}
+	if p.AngularVelocity < -currentRotSpeed {
+		p.AngularVelocity = -currentRotSpeed
+	}
 
 	p.Angle += p.AngularVelocity * dt
 

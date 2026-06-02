@@ -3,6 +3,7 @@ package enemy
 import (
 	"great-sword/game"
 	"great-sword/game/common"
+	"great-sword/game/player"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -66,6 +67,9 @@ func (h *Haters) UpdateHaiters(dt float64, world game.WorldView) {
 			h.HatersMass = append(h.HatersMass[:i], h.HatersMass[i+1:]...)
 			i--
 			common.Score++
+
+			player.ActivateBoost()
+
 			continue
 		}
 		if CheckCollisionWithPlayer(enemy.HX, enemy.HY, common.HaterSize, world) {
