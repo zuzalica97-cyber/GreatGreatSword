@@ -9,6 +9,19 @@ import (
 	"math/rand/v2"
 )
 
+var PatheticCooldownTime = 1.0
+var HatersCooldownTime = 1.0
+
+func PatheticCooldown(enemy *OnePath) {
+	enemy.PathericCooldownActive = true
+	enemy.PathericCooldownTimer = PatheticCooldownTime
+}
+
+func HatersCooldown(enemy *Haits) {
+	enemy.HatersCooldownActive = true
+	enemy.HatersCooldownTimer = HatersCooldownTime
+}
+
 func CheckCollisionWithPlayer(enemyX, enemyY, enemySize float64, world game.WorldView) bool {
 
 	var playerX float64

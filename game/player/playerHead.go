@@ -37,6 +37,9 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 	if BoostActive {
 		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)
 	}
+	if ForwardActive && BoostActive {
+		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)*2.5
+	}
 
 	rotationInput := 0.0
 
@@ -84,6 +87,27 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 
 		p.PositionHead.Px = centerX
 		p.PositionHead.Py = centerY
+
+		vx := pL.Speed.Vx
+		vy := pL.Speed.Vy
+
+		if vx < 0 {
+			vx = -vx
+		}
+		if vy < 0 {
+			vy = -vy
+		}
+		if currentRotSpeed < 0 {
+			currentRotSpeed = -currentRotSpeed
+		}
+
+		FinalDamage := ((pL.Speed.Vx + pL.Speed.Vy) * 0.1) + (currentRotSpeed * 0.1) + 50
+
+		if p.BoostActive {
+			FinalDamage = FinalDamage * 1.5
+		}
+
+		common.PlayerDamage = int(FinalDamage)
 	}
 
 	return false
