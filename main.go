@@ -57,6 +57,8 @@ func (g *Game) ResetGame() {
 	common.Valwe = 3
 	common.PatheticDamage = common.PathiticNormalDamage
 	common.PatheticBaseSpeed = common.PatheticNormalSpeed
+	common.HatersValwe = 2
+	common.PatheticDistanse = common.PatheticNormalDistanse
 
 	for _, entity := range g.world.SearchEntities("playerLeg") {
 		leg := entity.(*player.PlayerLeg)
@@ -85,6 +87,13 @@ func (g *Game) ResetGame() {
 
 					path.Paths = make([]enemy.OnePath, 0)
 
+					for _, entity := range g.world.SearchEntities("hater") {
+						hater := entity.(*enemy.Haters)
+
+						hater.Bullets = make([]enemy.HaitersBullet, 0)
+						hater.HatersMass = make([]enemy.Haits, 0)
+
+					}
 				}
 			}
 		}
@@ -205,7 +214,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				color.RGBA{180, 150, 150, 255},
 				true,
 			)
-
+		}
+		for _, bullet := range h.Bullets {
+			vector.FillRect(
+				screen,
+				float32(bullet.BX),
+				float32(bullet.BY),
+				common.HaitersBolletSize,
+				common.HaitersBolletSize,
+				color.RGBA{20, 20, 20, 255},
+				true,
+			)
 		}
 
 	}
@@ -252,7 +271,7 @@ func main() {
 		enemy.NewPathetic(),
 	)
 	world.AddEntity(
-		enemy.NewHaters(),
+		enemy.NawHaters(),
 	)
 
 	g := NewGame(world)

@@ -1,6 +1,7 @@
 package enemy
 
 import (
+	"fmt"
 	"great-sword/game"
 	"great-sword/game/common"
 	"great-sword/game/player"
@@ -16,8 +17,11 @@ type Pathetic struct {
 }
 
 type OnePath struct {
-	PX, PY float64
-	Active bool
+	PX, PY                 float64
+	Helth                  int
+	PathericCooldownActive bool
+	PathericCooldownTimer  float64
+	Active                 bool
 }
 
 func NewPathetic() *Pathetic {
@@ -33,6 +37,7 @@ func (p *Pathetic) SpawnPathetic() {
 		PX:     x,
 		PY:     y,
 		Active: true,
+		Helth:  common.PatheticHelth,
 	})
 }
 
@@ -44,6 +49,13 @@ func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
 		enemy := &p.Paths[i]
 		if !enemy.Active {
 			continue
+		}
+
+		if enemy.PathericCooldownActive {
+			enemy.PathericCooldownTimer -= dt
+			if enemy.PathericCooldownTimer <= 0 {
+				enemy.PathericCooldownActive = false
+			}
 		}
 
 		dx := playerX - enemy.PX
@@ -58,6 +70,10 @@ func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
 			t := 1.0 - distance/common.PatheticDistanse
 			speed = common.PatheticBaseSpeed + t*float64(common.PatheticMaxSpeed-common.PatheticBaseSpeed)
 		}
+		if enemy.PathericCooldownActive {
+			speed = -100
+		}
+
 		if distance > 0.01 {
 			enemy.PX += (dx / distance) * speed * dt
 			enemy.PY += (dy / distance) * speed * dt
@@ -65,15 +81,19 @@ func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
 
 		if CheckCollisionWithAttachment(enemy.PX, enemy.PY, common.PatheticSize, attahmentX,
 			attahmentY, float64(attahmentW), float64(attahmentH), attahmentAngle) {
-			p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
-			i--
 
-			if common.Score%10 == 0 {
+			if !enemy.PathericCooldownActive || enemy.PathericCooldownTimer <= 0.5 {
+				enemy.Helth -= common.PlayerDamage
+				fmt.Println(common.PlayerDamage)
+				PatheticCooldown(enemy)
+			}
+
+			if common.Score%20 == 0 {
 				common.Valwe++
 			}
 
 			if common.Score >= 100 {
-				if common.Score%50 == 0 {
+				if common.Score%100 == 0 {
 					common.PatheticDamage++
 				}
 				if common.Score%10 == 0 {
@@ -81,21 +101,39 @@ func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
 				}
 			}
 
-			common.Score++
-
-			if common.PlayerHelth <= common.MaxPlayerHelth-5 {
-				common.PlayerHelth += 5
+			if common.Score%20 == 0 {
+				common.Valwe++
 			}
 
-			player.ActivateBoost()
+			if common.Score >= 100 {
+				if common.Score%100 == 0 {
+					common.PatheticDamage++
+				}
+				if common.Score%50 == 0 {
+					common.PatheticBaseSpeed += 10.0
+				}
+				if common.Score%20 == 0 {
+					common.PatheticDistanse += 10
+				}
+			}
+
+			if enemy.Helth <= 0 {
+				p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
+				i--
+				common.Score++
+				common.PlayerHelth += 2
+				player.ActivateBoost()
+			}
 
 			continue
 		}
 		if CheckCollisionWithPlayer(enemy.PX, enemy.PY, common.PatheticSize, worldView) {
 
-			common.PlayerHelth -= common.PatheticDamage
+			if !enemy.PathericCooldownActive {
+				common.PlayerHelth -= common.PatheticDamage
+			}
 
-			speed = -speed * 10
+			PatheticCooldown(enemy)
 
 			enemy.PX += (dx / distance) * speed * dt
 			enemy.PY += (dy / distance) * speed * dt

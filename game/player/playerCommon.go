@@ -37,7 +37,7 @@ var ForwardTimer float64
 var ForwadTimerLong float64 = 0.5
 var RechargeForwart bool
 var RechargeForwartTimer float64
-var RechargeForwartTimerLong = 1.5
+var RechargeForwartTimerLong = 2.0
 
 func forward() {
 	ForwardActive = true

@@ -49,6 +49,10 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 
 	dt := 1.0 / 60.0
 
+	if common.PlayerHelth >= common.MaxPlayerHelth {
+		common.PlayerHelth = common.MaxPlayerHelth
+	}
+
 	if BoostActive {
 		BoostTimer -= dt
 		if BoostTimer <= 0 {
@@ -94,10 +98,10 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 	if ForwardActive {
 		rebound = Rebount / 2
 		axelerationLeg = common.Acceleration + 500.0
-		currentMaxSpeed = common.MaxSpeed + float64(Forward) // НУЖНО УВЕЛИЧЕТЬ СКОРСТЬ ПРИ ОБЫЧНОМ ИСПОЛЬЗОВАНИИ НЕ УВЕЛИЧЕВАЯ  ИМЕЮЩИЙСЯ ОТСОК от стен
+		currentMaxSpeed = common.MaxSpeed + float64(Forward)*10 // НУЖНО УВЕЛИЧЕТЬ СКОРСТЬ ПРИ ОБЫЧНОМ ИСПОЛЬЗОВАНИИ НЕ УВЕЛИЧЕВАЯ  ИМЕЮЩИЙСЯ ОТСОК от стен
 	}
 	if ForwardActive && BoostActive {
-		currentMaxSpeed = common.MaxSpeed + float64(Forward) + float64(BoostSpeed)*0.5
+		currentMaxSpeed = common.MaxSpeed + float64(Forward) + float64(BoostSpeed)*10
 	}
 
 	if currentMaxSpeed > float64(common.MaxPlayerSpeedMoving) {
@@ -179,6 +183,7 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 		p.Position.Py = common.ScreenHeight - common.PlayerSize
 		p.Speed.Vy = -p.Speed.Vy * rebound //отскок с потерей скорости
 	}
+
 	return false
 }
 
