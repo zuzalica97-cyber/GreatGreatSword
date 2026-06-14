@@ -35,8 +35,7 @@ func NawHaters() *Haters {
 	return h
 }
 
-func (h *Haters) SpawnHiters() {
-	x, y := RangomSpawnInWall()
+func (h *Haters) SpawnHiters(x, y float64) {
 
 	h.HatersMass = append(h.HatersMass, Haits{
 		HX:     x,
@@ -192,10 +191,6 @@ func (h *Haters) Update(worldView game.WorldView) bool {
 
 	if common.HatersValwe > common.MaxHatersValwe {
 		common.HatersValwe = common.MaxHatersValwe
-	}
-
-	if len(h.HatersMass) < common.HatersValwe {
-		h.SpawnHiters()
 	}
 
 	h.UpdateHaiters(dt, worldView)

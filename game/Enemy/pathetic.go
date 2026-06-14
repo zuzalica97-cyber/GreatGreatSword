@@ -29,10 +29,7 @@ func NewPathetic() *Pathetic {
 	return p
 }
 
-func (p *Pathetic) SpawnPathetic() {
-
-	x, y := RangomSpawnInWall()
-
+func (p *Pathetic) SpawnPathetic(x, y float64) {
 	p.Paths = append(p.Paths, OnePath{
 		PX:     x,
 		PY:     y,
@@ -151,12 +148,6 @@ func (p *Pathetic) Update(worldView game.WorldView) bool {
 
 	if common.Valwe > common.MaxValwe {
 		common.Valwe = common.MaxValwe
-	}
-
-	number := common.Valwe
-
-	if len(p.Paths) < number {
-		p.SpawnPathetic()
 	}
 
 	p.UpatePathetics(dt, worldView)

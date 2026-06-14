@@ -1,8 +1,9 @@
 package common
 
 const (
-	ScreenWidth     = 1100
-	ScreenHeight    = 900
+	GreeedSize      = 100
+	ScreenWidth     = 1100.0
+	ScreenHeight    = 900.0
 	ScreenGreedSize = 50
 	PlayerSize      = 50
 	PlayerHeadSize  = 50
@@ -11,9 +12,9 @@ const (
 	SwordAttachmentHeight    = 65
 	SwordAttachmentSmoothing = 0.6
 
-	PatheticSize     = 60
+	PatheticSize     = 50
 	PatheticMaxSpeed = 300
-	PatheticHelth    = 100
+	PatheticHelth    = 50
 
 	HaterSize             = 50
 	HaterMaxSpeed         = 300

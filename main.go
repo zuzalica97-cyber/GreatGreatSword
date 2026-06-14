@@ -7,6 +7,7 @@ import (
 	"great-sword/game/common"
 	"great-sword/game/player"
 	swords "great-sword/game/player/Swords"
+	"great-sword/game/rooms"
 	game "great-sword/game/world"
 	"image/color"
 	_ "image/png"
@@ -59,6 +60,12 @@ func (g *Game) ResetGame() {
 	common.PatheticBaseSpeed = common.PatheticNormalSpeed
 	common.HatersValwe = 2
 	common.PatheticDistanse = common.PatheticNormalDistanse
+
+	for _, entity := range g.world.SearchEntities("roomStruct") {
+		room := entity.(*rooms.FinalRoomStuct)
+		room.CurrentRoom = 0
+		room.LoadRoom(room.CurrentRoom, g.world)
+	}
 
 	for _, entity := range g.world.SearchEntities("playerLeg") {
 		leg := entity.(*player.PlayerLeg)
@@ -137,6 +144,31 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		screen.DrawImage(g.lowerTexture, op)
 	} else {
 		screen.Fill(color.RGBA{30, 30, 30, 255})
+	}
+
+	for _, portal := range g.world.SearchEntities("roomStruct") {
+		p := portal.(*rooms.FinalRoomStuct)
+
+		for _, portal := range p.Portals {
+			vector.FillRect(
+				screen,
+				float32(portal.X),
+				float32(portal.Y),
+				float32(portal.Width),
+				float32(portal.Height),
+				color.RGBA{180, 200, 250, 180},
+				true,
+			)
+			vector.FillRect(
+				screen,
+				float32(portal.X),
+				float32(portal.Y),
+				float32(portal.Width),
+				float32(portal.Height),
+				color.RGBA{255, 255, 255, 255},
+				true,
+			)
+		}
 	}
 
 	for _, entityH := range g.world.SearchEntities("playerHead") {
@@ -272,6 +304,9 @@ func main() {
 	)
 	world.AddEntity(
 		enemy.NawHaters(),
+	)
+	world.AddEntity(
+		rooms.NewFinalRoomStruct(world),
 	)
 
 	g := NewGame(world)
