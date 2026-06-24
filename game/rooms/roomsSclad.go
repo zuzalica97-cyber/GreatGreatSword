@@ -107,14 +107,10 @@ func NewRoomsInition() *RoomsInit {
 		ID:     3,
 		Portals: []PortalConfig{
 			{
-				Width:  30,
-				Height: 120,
-				Side:   "right",
+				Side: "right",
 			},
 			{
-				Width:  120,
-				Height: 30,
-				Side:   "bottom",
+				Side: "bottom",
 			},
 		},
 		EnemySpawns: []EnemySpawnConfig{
@@ -148,9 +144,76 @@ func NewRoomsInition() *RoomsInit {
 		Visited:    false,
 	}
 
+	templates[4] = RoomConfig{
+		Normal: true,
+		ID:     4,
+		Portals: []PortalConfig{
+			{
+				Side: "right",
+			},
+			{
+				Side: "bottom",
+			},
+			{
+				Side: "left",
+			},
+			{
+				Side: "top",
+			},
+		},
+		EnemySpawns: []EnemySpawnConfig{
+			{
+				Coordinats: []EnemySpawnCoordinats{
+					{
+						X: 200, Y: 200,
+					},
+					{
+						X: common.ScreenWidth - 200, Y: 200,
+					},
+					{
+						X: 200, Y: common.ScreenWidth - 200,
+					},
+					{
+						X: common.ScreenWidth - 200, Y: common.ScreenHeight - 200,
+					},
+					{
+						X: common.ScreenWidth / 2, Y: 200,
+					},
+					{
+						X: common.ScreenWidth / 2, Y: common.ScreenHeight - 200,
+					},
+				},
+				EnemyType:   "pathetic",
+				Count:       1,
+				RespawnTime: 0,
+			},
+			{
+				Coordinats: []EnemySpawnCoordinats{
+					{
+						X: 300, Y: 200,
+					},
+					{
+						X: common.ScreenWidth - 300, Y: 200,
+					},
+					{
+						X: 300, Y: common.ScreenWidth - 200,
+					},
+					{
+						X: common.ScreenWidth - 300, Y: common.ScreenHeight - 200,
+					},
+				},
+				EnemyType:   "pathetic",
+				Count:       1,
+				RespawnTime: 0,
+			},
+		},
+		Background: "assets/poll.png",
+		Visited:    false,
+	}
+
 	return &RoomsInit{
 		RoomsLv1: templates,
-		NextID:   4,
+		NextID:   5,
 	}
 
 }

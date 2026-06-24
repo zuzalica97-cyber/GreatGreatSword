@@ -53,8 +53,30 @@ type GameRoomsConfig struct {
 	StartRoom int
 }
 
-func GetRoomConfig() RoomConfig {
-	return RoomConfig{
+type FinalRoomStuct struct {
+	CurrentRoom      int
+	Portals          []Portal
+	EnemyRespawnTime map[int]float64
+	Rooms            map[int]RoomConfig //все созданные комнаты
+	RoomInit         *RoomsInit
+}
+
+type RoomPortal struct { //для связи между комнатами
+	FormRoom int
+	ToRoom   int
+	FormSide string
+	ToSide   string
+}
+
+func NewFinalRoomStruct(world game.WorldView) *FinalRoomStuct {
+
+	f := &FinalRoomStuct{
+		EnemyRespawnTime: make(map[int]float64),
+		Rooms:            make(map[int]RoomConfig),
+		RoomInit:         NewRoomsInition(),
+	}
+
+	room0 := RoomConfig{
 		//КОМНАТА 0
 		ID:     0,
 		Width:  common.ScreenWidth,
@@ -94,34 +116,11 @@ func GetRoomConfig() RoomConfig {
 		Background: "assets/poll.png",
 		Visited:    true,
 	}
-}
 
-type FinalRoomStuct struct {
-	CurrentRoom      int
-	Portals          []Portal
-	EnemyRespawnTime map[int]float64
-	Rooms            map[int]RoomConfig //все созданные комнаты
-	RoomInit         *RoomsInit
-}
+	f.Rooms[0] = room0
+	f.CurrentRoom = 0
 
-type RoomPortal struct { //для связи между комнатами
-	FromRoom int
-	ToRoom   int
-	FormSide string
-	ToSide   string
-}
-
-func NewFinalRoomStruct(world game.WorldView) *FinalRoomStuct {
-
-	f := &FinalRoomStuct{
-		EnemyRespawnTime: make(map[int]float64),
-		Rooms:            make(map[int]RoomConfig),
-		RoomInit:         NewRoomsInition(),
-	}
-
-	f.Rooms[0] = GetRoomConfig()
-
-	f.LoadRoom(0, world)
+	f.LoadRoom(0, 0, world)
 
 	return f
 }
