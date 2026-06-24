@@ -64,7 +64,7 @@ func (g *Game) ResetGame() {
 	for _, entity := range g.world.SearchEntities("roomStruct") {
 		room := entity.(*rooms.FinalRoomStuct)
 		room.CurrentRoom = 0
-		room.LoadRoom(room.CurrentRoom, g.world)
+		room.LoadRoom(room.CurrentRoom, 0, g.world)
 	}
 
 	for _, entity := range g.world.SearchEntities("playerLeg") {
