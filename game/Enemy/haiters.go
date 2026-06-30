@@ -4,9 +4,12 @@ import (
 	"great-sword/game"
 	"great-sword/game/common"
 	"great-sword/game/player"
+	"image/color"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/setanarut/kamera/v2"
 )
 
 var _ game.Entity = (*Haters)(nil)
@@ -23,11 +26,15 @@ type Haits struct {
 	BulletShotTimer      float64
 	HX, HY               float64
 	Active               bool
+	Texture              *ebiten.Image
+	Color                color.RGBA
 }
 type HaitersBullet struct {
 	BX, BY    float64
 	VX, VY    float64
 	BulActive bool
+	Texture   *ebiten.Image
+	Color     color.RGBA
 }
 
 func NawHaters() *Haters {
@@ -41,6 +48,7 @@ func (h *Haters) SpawnHiters(x, y float64) {
 		HX:     x,
 		HY:     y,
 		Active: true,
+		Color:  color.RGBA{180, 150, 150, 255},
 	})
 }
 
@@ -163,8 +171,8 @@ func (h *Haters) UpdateBulets(dt float64, world game.WorldView) {
 		bulet.BX += bulet.VX * dt
 		bulet.BY += bulet.VY * dt
 
-		if bulet.BX < -50 || bulet.BX > common.ScreenWidth+50 ||
-			bulet.BY < -50 || bulet.BY > common.ScreenWidth+50 {
+		if bulet.BX < -50 || bulet.BX > common.RoomWidth+50 ||
+			bulet.BY < -50 || bulet.BY > common.RoomHeight+50 {
 			h.Bullets = append(h.Bullets[:b], h.Bullets[b+1:]...)
 			b--
 			continue
@@ -198,7 +206,29 @@ func (h *Haters) Update(worldView game.WorldView) bool {
 	return false
 }
 
-func (h *Haters) Draw(screen *ebiten.Image) {
+func (h *Haters) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+	for _, enemy := range h.HatersMass {
+		vector.FillRect(
+			screen,
+			float32(enemy.HX),
+			float32(enemy.HY),
+			common.HaterSize,
+			common.HaterSize,
+			enemy.Color,
+			true,
+		)
+	}
+	for _, bullet := range h.Bullets {
+		vector.FillRect(
+			screen,
+			float32(bullet.BX),
+			float32(bullet.BY),
+			common.HaitersBolletSize,
+			common.HaitersBolletSize,
+			color.RGBA{20, 20, 20, 255},
+			true,
+		)
+	}
 }
 
 func (h *Haters) Tag() string {

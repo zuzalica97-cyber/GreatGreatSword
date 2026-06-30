@@ -5,9 +5,12 @@ import (
 	"great-sword/game"
 	"great-sword/game/common"
 	"great-sword/game/player"
+	"image/color"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/setanarut/kamera/v2"
 )
 
 var _ game.Entity = (*Pathetic)(nil)
@@ -22,6 +25,8 @@ type OnePath struct {
 	PathericCooldownActive bool
 	PathericCooldownTimer  float64
 	Active                 bool
+	Texture                *ebiten.Image
+	Color                  color.RGBA
 }
 
 func NewPathetic() *Pathetic {
@@ -35,6 +40,7 @@ func (p *Pathetic) SpawnPathetic(x, y float64) {
 		PY:     y,
 		Active: true,
 		Helth:  common.PatheticHelth,
+		Color:  color.RGBA{150, 150, 150, 255},
 	})
 }
 
@@ -146,6 +152,11 @@ func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
 func (p *Pathetic) Update(worldView game.WorldView) bool {
 	dt := 1.0 / 60.0
 
+	if len(p.Paths) < 10 {
+		x, y := RangomSpawnInWall()
+		p.SpawnPathetic(x, y)
+	}
+
 	if common.Valwe > common.MaxValwe {
 		common.Valwe = common.MaxValwe
 	}
@@ -155,7 +166,23 @@ func (p *Pathetic) Update(worldView game.WorldView) bool {
 	return false
 }
 
-func (p *Pathetic) Draw(screen *ebiten.Image) {
+func (p *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+
+	for _, enemy := range p.Paths {
+
+		screenX := enemy.PX - camera.X
+		screenY := enemy.PY - camera.Y
+
+		vector.FillRect(
+			screen,
+			float32(screenX),
+			float32(screenY),
+			common.PatheticSize,
+			common.PatheticSize,
+			enemy.Color,
+			true,
+		)
+	}
 }
 
 func (p *Pathetic) Tag() string {

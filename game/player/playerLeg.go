@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"great-sword/game"
 	"great-sword/game/common"
+	"log"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/setanarut/kamera/v2"
 )
 
 var _ game.Entity = (*PlayerLeg)(nil)
@@ -14,14 +16,15 @@ var _ game.Entity = (*PlayerLeg)(nil)
 type PlayerLeg struct {
 	Position common.PointPlayer
 	Speed    common.PointSpeed
+	Texture  *ebiten.Image
 }
 
 func NewPlayerLeg() *PlayerLeg {
 
 	return &PlayerLeg{
 		Position: common.PointPlayer{
-			Px: common.ScreenWidth/2 - common.PlayerSize/2,
-			Py: common.ScreenHeight/2 - common.PlayerSize/2,
+			Px: common.RoomWidth/2 - common.PlayerSize/2,
+			Py: common.RoomHeight/2 - common.PlayerSize/2,
 		},
 		Speed: common.PointSpeed{
 			Vx: 0,
@@ -84,6 +87,10 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 
 	if ebiten.IsKeyPressed(ebiten.KeyT) {
 		fmt.Println(p.Speed.Vx, p.Speed.Vy)
+	}
+
+	if ebiten.IsKeyPressed(ebiten.KeyP) {
+		log.Println(p.Position.Px, p.Position.Py)
 	}
 
 	rebound := Rebount
@@ -171,23 +178,23 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 		p.Position.Px = 0
 		p.Speed.Vx = -p.Speed.Vx * rebound //отскок с потерей скорости
 	}
-	if p.Position.Px > common.ScreenWidth-common.PlayerSize {
-		p.Position.Px = common.ScreenWidth - common.PlayerSize
+	if p.Position.Px > common.RoomWidth-common.PlayerSize {
+		p.Position.Px = common.RoomHeight - common.PlayerSize
 		p.Speed.Vx = -p.Speed.Vx * rebound //отскок с потерей скорости
 	}
 	if p.Position.Py < 0 {
 		p.Position.Py = 0
 		p.Speed.Vy = -p.Speed.Vy * rebound //отскок с потерей скорости
 	}
-	if p.Position.Py > common.ScreenHeight-common.PlayerSize {
-		p.Position.Py = common.ScreenHeight - common.PlayerSize
+	if p.Position.Py > common.RoomHeight-common.PlayerSize {
+		p.Position.Py = common.RoomHeight - common.PlayerSize
 		p.Speed.Vy = -p.Speed.Vy * rebound //отскок с потерей скорости
 	}
 
 	return false
 }
 
-func (p *PlayerLeg) Draw(screen *ebiten.Image) {
+func (p *PlayerLeg) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 }
 
 func (p *PlayerLeg) Tag() string {

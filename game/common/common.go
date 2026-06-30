@@ -25,6 +25,9 @@ const (
 	HaitersBolletCooldown = 1.0
 )
 
+var RoomWidth = 1500.0
+var RoomHeight = 1500.0
+
 var MaxPlayerSpeedMoving = 1000
 
 var HeadAcceleration = 1000.0
