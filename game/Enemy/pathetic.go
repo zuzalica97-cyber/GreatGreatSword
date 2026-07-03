@@ -1,7 +1,6 @@
 package enemy
 
 import (
-	"fmt"
 	"great-sword/game"
 	"great-sword/game/common"
 	"great-sword/game/player"
@@ -87,7 +86,6 @@ func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
 
 			if !enemy.PathericCooldownActive || enemy.PathericCooldownTimer <= 0.5 {
 				enemy.Helth -= common.PlayerDamage
-				fmt.Println(common.PlayerDamage)
 				PatheticCooldown(enemy)
 			}
 
@@ -124,7 +122,6 @@ func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
 				p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
 				i--
 				common.Score++
-				common.PlayerHelth += 2
 				player.ActivateBoost()
 			}
 

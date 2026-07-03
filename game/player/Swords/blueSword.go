@@ -1,7 +1,6 @@
 package swords
 
 import (
-	"fmt"
 	"great-sword/game"
 	"great-sword/game/common"
 	"great-sword/game/player"
@@ -145,20 +144,16 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 			maxY = math.Max(maxY, c.Y)
 		}
 
-		if ebiten.IsKeyPressed(ebiten.KeyO) {
-			fmt.Println(maxX)
-		}
-
 		var Mnogitel = 15.0
 
 		var gool = 1.0
 
-		if player.ForwardActive {
+		if player.ForwardTimer > 0 {
 			gool = 10.0
 			Mnogitel = 0.05
 		}
 
-		if player.ForwardActive && player.BoostActive {
+		if player.ForwardTimer > 0 && player.BoostTimer > 0 {
 			gool = 15.0
 			Mnogitel = 0.05
 		}
@@ -188,11 +183,17 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 
 func (b *BlueSword) Update(worldView game.WorldView) bool {
 
-	b.UpdateAttachmentTarget(worldView)
+	if player.SwordIxist {
 
-	b.UpdateAttachmentWithDelay()
+		b.UpdateAttachmentTarget(worldView)
 
-	b.ResolveCollision(worldView)
+		b.UpdateAttachmentWithDelay()
+
+		b.ResolveCollision(worldView)
+	} else {
+		b.Position.Px = 3000
+		b.Position.Py = 3000
+	}
 
 	return false
 }
@@ -200,13 +201,13 @@ func (b *BlueSword) Update(worldView game.WorldView) bool {
 func (b *BlueSword) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	Color := color.RGBA{0, 100, 200, 255}
 
-	if player.ForwardActive {
+	if player.ForwardTimer > 0 {
 		Color = color.RGBA{50, 200, 200, 255}
 	}
-	if player.BoostActive {
+	if player.BoostTimer > 0 {
 		Color = color.RGBA{200, 50, 50, 255}
 	}
-	if player.BoostActive && player.ForwardActive {
+	if player.BoostTimer > 0 && player.ForwardTimer > 0 {
 		Color = color.RGBA{200, 200, 50, 255}
 	}
 

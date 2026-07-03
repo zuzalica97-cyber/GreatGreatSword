@@ -46,10 +46,10 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 
 	currentRotSpeed := common.HeadRotationSpeed
 
-	if BoostActive {
+	if BoostTimer > 0 {
 		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)
 	}
-	if ForwardActive && BoostActive {
+	if ForwardTimer > 0 && BoostTimer > 0 {
 		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)*2.5
 	}
 
