@@ -1,14 +1,15 @@
 package swords
 
 import (
-	"fmt"
 	"great-sword/game"
 	"great-sword/game/common"
 	"great-sword/game/player"
+	"image/color"
 
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/setanarut/kamera/v2"
 )
 
 var _ game.Entity = (*BlueSword)(nil)
@@ -19,6 +20,7 @@ type BlueSword struct {
 	Angle            float64
 	TargetAngle      float64
 	SnowCollision    bool
+	Texture          *ebiten.Image
 }
 
 func NewBlueSword(world game.WorldView) *BlueSword {
@@ -89,8 +91,8 @@ func (b *BlueSword) CheckCollisionWithWalls() bool {
 	corners := b.GetAttachmentCorners()
 
 	for _, corner := range corners {
-		if corner.X < 0 || corner.X > common.ScreenWidth ||
-			corner.Y < 0 || corner.Y > common.ScreenHeight {
+		if corner.X < 0 || corner.X > common.RoomWidth ||
+			corner.Y < 0 || corner.Y > common.RoomHeight {
 			collided = true
 		}
 	}
@@ -99,10 +101,10 @@ func (b *BlueSword) CheckCollisionWithWalls() bool {
 
 func (b *BlueSword) UpdateAttachmentTarget(worldView game.WorldView) {
 	for _, entity := range worldView.SearchEntities("playerLeg") {
-		leg := entity.(*player.PlayerLeg)
+		p := entity.(*player.PlayerLeg)
 
-		centrX := leg.Position.Px + common.PlayerHeadSize/2
-		centrY := leg.Position.Py + common.PlayerHeadSize/2
+		centrX := p.Position.Px + common.PlayerSize
+		centrY := p.Position.Py + common.PlayerSize
 
 		for _, entity := range worldView.SearchEntities("playerHead") {
 			head := entity.(*player.PlayerHead)
@@ -142,20 +144,16 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 			maxY = math.Max(maxY, c.Y)
 		}
 
-		if ebiten.IsKeyPressed(ebiten.KeyO) {
-			fmt.Println(maxX)
-		}
-
 		var Mnogitel = 15.0
 
 		var gool = 1.0
 
-		if player.ForwardActive {
+		if player.ForwardTimer > 0 {
 			gool = 10.0
 			Mnogitel = 0.05
 		}
 
-		if player.ForwardActive && player.BoostActive {
+		if player.ForwardTimer > 0 && player.BoostTimer > 0 {
 			gool = 15.0
 			Mnogitel = 0.05
 		}
@@ -165,13 +163,13 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 
 		if minX < 0 {
 			offsetX = -minX * Mnogitel
-		} else if maxX > common.ScreenWidth {
-			offsetX = (common.ScreenWidth - maxX) * Mnogitel
+		} else if maxX > common.RoomWidth {
+			offsetX = (common.RoomWidth - maxX) * Mnogitel
 		}
 		if minY < 0 {
 			offsetY = -minY * Mnogitel
-		} else if maxY > common.ScreenHeight {
-			offsetY = (common.ScreenHeight - maxY) * Mnogitel
+		} else if maxY > common.RoomHeight {
+			offsetY = (common.RoomHeight - maxY) * Mnogitel
 		}
 
 		b.Position.Px += offsetX * 0.025
@@ -185,16 +183,45 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 
 func (b *BlueSword) Update(worldView game.WorldView) bool {
 
-	b.UpdateAttachmentTarget(worldView)
+	if player.SwordIxist {
 
-	b.UpdateAttachmentWithDelay()
+		b.UpdateAttachmentTarget(worldView)
 
-	b.ResolveCollision(worldView)
+		b.UpdateAttachmentWithDelay()
+
+		b.ResolveCollision(worldView)
+	} else {
+		b.Position.Px = 3000
+		b.Position.Py = 3000
+	}
 
 	return false
 }
 
-func (b *BlueSword) Draw(screen *ebiten.Image) {
+func (b *BlueSword) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+	Color := color.RGBA{0, 100, 200, 255}
+
+	if player.ForwardTimer > 0 {
+		Color = color.RGBA{50, 200, 200, 255}
+	}
+	if player.BoostTimer > 0 {
+		Color = color.RGBA{200, 50, 50, 255}
+	}
+	if player.BoostTimer > 0 && player.ForwardTimer > 0 {
+		Color = color.RGBA{200, 200, 50, 255}
+	}
+
+	// Создаём временное изображение для меча
+	swordImg := ebiten.NewImage(int(common.SwordAttachmentWidth), int(common.SwordAttachmentHeight))
+	swordImg.Fill(Color)
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(-common.SwordAttachmentWidth/2, -common.SwordAttachmentHeight/2)
+	op.GeoM.Rotate(b.Angle * math.Pi / 180)
+	op.GeoM.Translate(b.Position.Px, b.Position.Py) // мировые координаты
+
+	// Камера сама применит смещение
+	camera.Draw(swordImg, op, screen)
 }
 
 func (b *BlueSword) Tag() string {

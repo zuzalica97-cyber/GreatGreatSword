@@ -3,10 +3,13 @@ package player
 import (
 	"great-sword/game"
 	"great-sword/game/common"
+	"log"
 
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/setanarut/kamera/v2"
 )
 
 var _ game.Entity = (*PlayerHead)(nil)
@@ -20,13 +23,22 @@ type PlayerHead struct {
 	BoostActive    bool
 	NormalSpeed    float64
 	NormalROTSPEED float64
+	Texture        *ebiten.Image
 }
 
 func NewPlayerHead() *PlayerHead {
-	return &PlayerHead{
+	p := &PlayerHead{
 		Angle:           0.0,
 		AngularVelocity: 0.0,
 	}
+
+	var err error
+
+	p.Texture, _, err = ebitenutil.NewImageFromFile("assets/goll.png") //НЕ РАБОТАЕТ СДЕСЬ
+	if err != nil {
+		log.Fatal("failed to load lower texture", err)
+	}
+	return p
 }
 
 func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
@@ -34,10 +46,10 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 
 	currentRotSpeed := common.HeadRotationSpeed
 
-	if BoostActive {
+	if BoostTimer > 0 {
 		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)
 	}
-	if ForwardActive && BoostActive {
+	if ForwardTimer > 0 && BoostTimer > 0 {
 		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)*2.5
 	}
 
@@ -46,9 +58,11 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		rotationInput = -1
 	}
+
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
 		rotationInput = 1
 	}
+
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) &&
 		ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
 		rotationInput = 0
@@ -113,8 +127,34 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 	return false
 }
 
-func (p *PlayerHead) Draw(screen *ebiten.Image) {
+func (p *PlayerHead) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+	centerX := p.PositionHead.Px + common.PlayerHeadSize/2
+	centerY := p.PositionHead.Py + common.PlayerHeadSize/2
 
+	if p.Texture != nil {
+		texW := float64(p.Texture.Bounds().Dx())
+		texH := float64(p.Texture.Bounds().Dy())
+
+		scaleX := common.PlayerHeadSize / texW
+		scaleY := common.PlayerHeadSize / texH
+
+		opHat := &ebiten.DrawImageOptions{}
+
+		// 1. Смещаем к центру текстуры
+		opHat.GeoM.Translate(-texW/2, -texH/2)
+
+		// 2. Масштабируем
+		opHat.GeoM.Scale(scaleX, scaleY)
+
+		// 3. Поворачиваем
+		opHat.GeoM.Rotate(p.Angle * math.Pi / 180)
+
+		// 4. Смещаем в МИРОВУЮ позицию (центр игрока)
+		opHat.GeoM.Translate(centerX, centerY)
+
+		// Рисуем через камеру
+		camera.Draw(p.Texture, opHat, screen)
+	}
 }
 
 func (p *PlayerHead) Tag() string {

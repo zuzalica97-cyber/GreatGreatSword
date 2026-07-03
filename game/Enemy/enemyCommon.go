@@ -64,16 +64,16 @@ func RangomSpawnInWall() (float64, float64) {
 	switch side {
 	case 0: //левый крвй
 		x = -float64(common.PatheticSize)
-		y = float64(rand.IntN(common.ScreenHeight))
+		y = float64(rand.IntN(int(common.RoomHeight)))
 	case 1: //левый крвй
-		x = float64(common.ScreenWidth)
-		y = float64(rand.IntN(common.ScreenHeight))
+		x = float64(common.RoomWidth)
+		y = float64(rand.IntN(int(common.RoomHeight)))
 	case 2: //левый крвй
-		x = float64(rand.IntN(common.ScreenWidth))
+		x = float64(rand.IntN(int(common.RoomWidth)))
 		y = -float64(common.PatheticSize)
 	case 3: //левый крвй
-		x = float64(rand.IntN(common.ScreenWidth))
-		y = float64(common.ScreenHeight)
+		x = float64(rand.IntN(int(common.RoomWidth)))
+		y = float64(common.RoomHeight)
 	}
 	return x, y
 }
