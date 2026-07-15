@@ -18,15 +18,13 @@ func SwordVanished() {
 }
 
 var BoostTimer float64
-var NormalSpeed float64 = common.MaxSpeed
-var NormalRotSpeed float64 = common.HeadRotationSpeed
 var NormalBoostTimerLong float64 = 0.5
 var BoostTimerLong float64 = NormalBoostTimerLong
 
-var NormalBoostRotating int = 300
-var NormalBoostSpeed int = 300
+var NormalBoostRotating int = 150
+var NormalBoostSpeed int = 150
 
-var MaxBoostSpeed int = 450
+var MaxBoostSpeed int = 350
 
 var BoostRotating int = NormalBoostRotating
 var BoostSpeed int = NormalBoostSpeed
@@ -44,21 +42,10 @@ func ActivateBoost() {
 	}
 }
 
-var Forward int = 1000
-var ForwardTimer float64
-var ForwadTimerLong float64 = 0.5
-var RechargeForwartTimer float64
-var RechargeForwartTimerLong = 2.0
-
-func forward() {
-	ForwardTimer = ForwadTimerLong
-	common.Deceleration = 0
-	common.Acceleration = common.Acceleration * 2
-}
-
-func ActivatedForward() {
-	RechargeForwartTimer = RechargeForwartTimerLong
-	forward()
-}
-
 var Rebount float64 = 0.6
+
+func (p *PlayerLeg) DamagePlayer(damage int) {
+	if p.Speed.Vx < 600 && p.Speed.Vx >= -600 && p.Speed.Vy <= 600 && p.Speed.Vy >= -600 {
+		common.PlayerHelth -= float64(damage)
+	}
+}

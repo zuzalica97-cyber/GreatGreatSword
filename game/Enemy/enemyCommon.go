@@ -56,21 +56,21 @@ func CheckCollisionWithAttachment(enemyX, enemyY, enemySize float64, attX, attY,
 	return math.Abs(localX) < halfW+enemySize/2 && math.Abs(localY) < halfH+enemySize/2
 }
 
-func RangomSpawnInWall() (float64, float64) {
+func RangomSpawnInWall(size int) (float64, float64) {
 	side := rand.IntN(4)
 
 	var x, y float64
 
 	switch side {
 	case 0: //левый крвй
-		x = -float64(common.PatheticSize)
+		x = -float64(size)
 		y = float64(rand.IntN(int(common.RoomHeight)))
 	case 1: //левый крвй
 		x = float64(common.RoomWidth)
 		y = float64(rand.IntN(int(common.RoomHeight)))
 	case 2: //левый крвй
 		x = float64(rand.IntN(int(common.RoomWidth)))
-		y = -float64(common.PatheticSize)
+		y = -float64(size)
 	case 3: //левый крвй
 		x = float64(rand.IntN(int(common.RoomWidth)))
 		y = float64(common.RoomHeight)
