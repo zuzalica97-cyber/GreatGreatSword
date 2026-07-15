@@ -4,7 +4,9 @@ go 1.25.0
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.9.9
+	github.com/setanarut/coll v1.6.0
 	github.com/setanarut/kamera/v2 v2.98.2
+	github.com/setanarut/v v1.2.2
 )
 
 require (

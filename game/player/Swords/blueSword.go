@@ -3,6 +3,7 @@ package swords
 import (
 	"great-sword/game"
 	"great-sword/game/common"
+	"great-sword/game/hitboxes"
 	"great-sword/game/player"
 	"image/color"
 
@@ -148,16 +149,6 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 
 		var gool = 1.0
 
-		if player.ForwardTimer > 0 {
-			gool = 10.0
-			Mnogitel = 0.05
-		}
-
-		if player.ForwardTimer > 0 && player.BoostTimer > 0 {
-			gool = 15.0
-			Mnogitel = 0.05
-		}
-
 		offsetX := 0.0
 		offsetY := 0.0
 
@@ -181,7 +172,7 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 
 }
 
-func (b *BlueSword) Update(worldView game.WorldView) bool {
+func (b *BlueSword) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 
 	if player.SwordIxist {
 
@@ -201,14 +192,8 @@ func (b *BlueSword) Update(worldView game.WorldView) bool {
 func (b *BlueSword) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	Color := color.RGBA{0, 100, 200, 255}
 
-	if player.ForwardTimer > 0 {
-		Color = color.RGBA{50, 200, 200, 255}
-	}
 	if player.BoostTimer > 0 {
 		Color = color.RGBA{200, 50, 50, 255}
-	}
-	if player.BoostTimer > 0 && player.ForwardTimer > 0 {
-		Color = color.RGBA{200, 200, 50, 255}
 	}
 
 	// Создаём временное изображение для меча

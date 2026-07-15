@@ -2,7 +2,10 @@ package player
 
 import (
 	"great-sword/game"
+	"great-sword/game/abilities"
 	"great-sword/game/common"
+	"great-sword/game/hitboxes"
+	gameL "great-sword/game/world"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -10,16 +13,24 @@ import (
 )
 
 var _ game.Entity = (*PlayerLeg)(nil)
+var _ game.PlayerLegInter = (*PlayerLeg)(nil)
 
 type PlayerLeg struct {
-	Position common.PointPlayer
-	Speed    common.PointSpeed
-	Texture  *ebiten.Image
+	Position          common.PointPlayer
+	Speed             common.PointSpeed
+	Texture           *ebiten.Image
+	AxelerationLeg    float64
+	DeAxelerationLeg  float64
+	CurrentMaxSpeed   float64
+	Rebound           float64
+	MoveX             float64
+	MoveY             float64
+	AbilityLegManager *gameL.PlayerWorld
 }
 
 func NewPlayerLeg() *PlayerLeg {
 
-	return &PlayerLeg{
+	p := &PlayerLeg{
 		Position: common.PointPlayer{
 			Px: common.RoomWidth/2 - common.PlayerSize/2,
 			Py: common.RoomHeight/2 - common.PlayerSize/2,
@@ -28,26 +39,24 @@ func NewPlayerLeg() *PlayerLeg {
 			Vx: 0,
 			Vy: 0,
 		},
+		AbilityLegManager: gameL.NewPlayerWorld(),
 	}
-}
+	p.AbilityLegManager.AddAbility(
+		abilities.NewDash(),
+	)
 
-func clamp(value, min, max float64) float64 {
-	if value < min {
-		return min
-	}
-	if value > max {
-		return max
-	}
-	return value
+	return p
 }
 
 func (p *PlayerLeg) ActivateBoost() {
 	BoostTimer = BoostTimerLong
 }
 
-func (p *PlayerLeg) Update(worldView game.WorldView) bool {
+func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 
 	dt := 1.0 / 60.0
+
+	common.SwordExist = SwordIxist
 
 	if common.PlayerHelth >= common.MaxPlayerHelth {
 		common.PlayerHelth = common.MaxPlayerHelth
@@ -61,62 +70,33 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 		SwordIxistTimer -= dt
 	}
 
-	if ForwardTimer > 0 {
-		ForwardTimer -= dt
-		if ForwardTimer <= 0 {
-			common.Deceleration = common.NormalDeceleration
-			common.Acceleration = common.NormalAcceleration
-		}
-	}
-
-	if RechargeForwartTimer > 0 {
-		RechargeForwartTimer -= dt
-	}
-
 	if ebiten.IsKeyPressed(ebiten.KeySpace) {
-		if RechargeForwartTimer <= 0 {
-			ActivatedForward()
-		}
+		p.AbilityLegManager.ActivateAbility("Dash", worldView)
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyF) {
 		SwordVanished()
 	}
 
-	rebound := Rebount
+	p.Rebound = Rebount
 
-	axelerationLeg := common.Acceleration
-	deAxeleration := common.Deceleration
+	p.AxelerationLeg = common.Acceleration
+	p.DeAxelerationLeg = common.Deceleration
 
-	currentMaxSpeed := common.MaxSpeed
+	p.CurrentMaxSpeed = common.MaxSpeed
 
 	if BoostTimer > 0 {
-		currentMaxSpeed = common.MaxSpeed + float64(BoostSpeed)
+		p.CurrentMaxSpeed = common.MaxSpeed + float64(BoostSpeed)
 	}
-	if ForwardTimer > 0 {
-		rebound = Rebount / 2
-		axelerationLeg = common.Acceleration + 500.0
-		currentMaxSpeed = common.MaxSpeed + float64(Forward)*10 // НУЖНО УВЕЛИЧЕТЬ СКОРСТЬ ПРИ ОБЫЧНОМ ИСПОЛЬЗОВАНИИ НЕ УВЕЛИЧЕВАЯ  ИМЕЮЩИЙСЯ ОТСОК от стен
-	}
-	if ForwardTimer > 0 && ForwardTimer > 0 {
-		currentMaxSpeed = common.MaxSpeed + float64(Forward) + float64(BoostSpeed)*10
-	}
-	if SwordIxistTimer > 0 {
-		deAxeleration = common.Deceleration / 10
-		axelerationLeg = common.Acceleration / 5
-		speed := currentMaxSpeed
-		currentMaxSpeed = speed * 2
-		forwardT := ForwadTimerLong
-		rechangeForwT := RechargeForwartTimerLong
-		ForwadTimerLong = forwardT * 2
-		RechargeForwartTimerLong = rechangeForwT / 2
-	} else {
-		ForwadTimerLong = 0.5
-		RechargeForwartTimerLong = 2.0
+	if !SwordIxist {
+		p.CurrentMaxSpeed = common.MaxSpeed * 2
+		p.DeAxelerationLeg = common.Deceleration / 5
+		p.AxelerationLeg = common.Acceleration * 2
+
 	}
 
-	if currentMaxSpeed > float64(common.MaxPlayerSpeedMoving) {
-		currentMaxSpeed = float64(common.MaxPlayerSpeedMoving)
+	if p.CurrentMaxSpeed > float64(common.MaxPlayerSpeedMoving) {
+		p.CurrentMaxSpeed = float64(common.MaxPlayerSpeedMoving)
 	}
 
 	moveX, moveY := 0.0, 0.0
@@ -139,10 +119,21 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 		moveY *= 0.7071
 	}
 
-	if moveX != 0 { //Применяем ускорение
-		p.Speed.Vx += moveX * axelerationLeg * dt
+	if !SwordIxist {
+		p.CurrentMaxSpeed = common.MaxSpeed * 1.5
+		p.AxelerationLeg = common.Acceleration * 1.8   // резкий разгон
+		p.DeAxelerationLeg = common.Deceleration * 2.0 // резкое торможение
+	}
+
+	p.MoveX = moveX
+	p.MoveY = moveY
+
+	p.AbilityLegManager.UpdateAbilities(worldView)
+
+	if p.MoveX != 0 { //Применяем ускорение
+		p.Speed.Vx += p.MoveX * p.AxelerationLeg * dt
 	} else {
-		dec := deAxeleration * dt // Замедление если ненажата клавиша
+		dec := p.DeAxelerationLeg * dt // Замедление если ненажата клавиша
 		if math.Abs(p.Speed.Vx) > dec {
 			p.Speed.Vx -= math.Copysign(dec, p.Speed.Vx)
 		} else {
@@ -150,10 +141,10 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 		}
 	}
 
-	if moveY != 0 { //Применяем ускорение
-		p.Speed.Vy += moveY * axelerationLeg * dt
+	if p.MoveY != 0 { //Применяем ускорение
+		p.Speed.Vy += p.MoveY * p.DeAxelerationLeg * dt
 	} else {
-		dec := deAxeleration * dt // Замедление если ненажата клавиша
+		dec := p.DeAxelerationLeg * dt // Замедление если ненажата клавиша
 		if math.Abs(p.Speed.Vy) > dec {
 			p.Speed.Vy -= math.Copysign(dec, p.Speed.Vy)
 		} else {
@@ -161,17 +152,17 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 		}
 	}
 
-	if p.Speed.Vx > currentMaxSpeed {
-		p.Speed.Vx = currentMaxSpeed
+	if p.Speed.Vx > p.CurrentMaxSpeed {
+		p.Speed.Vx = p.CurrentMaxSpeed
 	}
-	if p.Speed.Vx < -currentMaxSpeed {
-		p.Speed.Vx = -currentMaxSpeed
+	if p.Speed.Vx < -p.CurrentMaxSpeed {
+		p.Speed.Vx = -p.CurrentMaxSpeed
 	}
-	if p.Speed.Vy > currentMaxSpeed {
-		p.Speed.Vy = currentMaxSpeed
+	if p.Speed.Vy > p.CurrentMaxSpeed {
+		p.Speed.Vy = p.CurrentMaxSpeed
 	}
-	if p.Speed.Vy < -currentMaxSpeed {
-		p.Speed.Vy = -currentMaxSpeed
+	if p.Speed.Vy < -p.CurrentMaxSpeed {
+		p.Speed.Vy = -p.CurrentMaxSpeed
 	}
 
 	p.Position.Px += p.Speed.Vx * dt
@@ -180,19 +171,19 @@ func (p *PlayerLeg) Update(worldView game.WorldView) bool {
 	//Границы с отскоком и потерей скорости
 	if p.Position.Px < 0 {
 		p.Position.Px = 0
-		p.Speed.Vx = -p.Speed.Vx * rebound //отскок с потерей скорости
+		p.Speed.Vx = -p.Speed.Vx * p.Rebound //отскок с потерей скорости
 	}
 	if p.Position.Px > common.RoomWidth-common.PlayerSize {
 		p.Position.Px = common.RoomHeight - common.PlayerSize
-		p.Speed.Vx = -p.Speed.Vx * rebound //отскок с потерей скорости
+		p.Speed.Vx = -p.Speed.Vx * p.Rebound //отскок с потерей скорости
 	}
 	if p.Position.Py < 0 {
 		p.Position.Py = 0
-		p.Speed.Vy = -p.Speed.Vy * rebound //отскок с потерей скорости
+		p.Speed.Vy = -p.Speed.Vy * p.Rebound //отскок с потерей скорости
 	}
 	if p.Position.Py > common.RoomHeight-common.PlayerSize {
 		p.Position.Py = common.RoomHeight - common.PlayerSize
-		p.Speed.Vy = -p.Speed.Vy * rebound //отскок с потерей скорости
+		p.Speed.Vy = -p.Speed.Vy * p.Rebound //отскок с потерей скорости
 	}
 
 	return false

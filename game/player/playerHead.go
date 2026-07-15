@@ -2,10 +2,14 @@ package player
 
 import (
 	"great-sword/game"
+	"great-sword/game/abilities"
 	"great-sword/game/common"
+	"great-sword/game/hitboxes"
 	"log"
 
 	"math"
+
+	gameH "great-sword/game/world"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -13,53 +17,65 @@ import (
 )
 
 var _ game.Entity = (*PlayerHead)(nil)
+var _ game.PlayerHeadInter = (*PlayerHead)(nil)
+
+var SpinRotatinInput int
 
 type PlayerHead struct {
 	PositionHead    common.PointPlayer
 	Angle           float64
 	AngularVelocity float64
 
-	BoostTimer     float64
-	BoostActive    bool
-	NormalSpeed    float64
-	NormalROTSPEED float64
-	Texture        *ebiten.Image
+	BoostTimer         float64
+	BoostActive        bool
+	NormalSpeed        float64
+	NormalROTSPEED     float64
+	CurrentRotSpead    float64
+	HDeceleration      float64
+	HAceleration       float64
+	Texture            *ebiten.Image
+	AbilityHeadManager *gameH.PlayerWorld
 }
 
 func NewPlayerHead() *PlayerHead {
 	p := &PlayerHead{
-		Angle:           0.0,
-		AngularVelocity: 0.0,
+		Angle:              0.0,
+		AngularVelocity:    0.0,
+		AbilityHeadManager: gameH.NewPlayerWorld(),
 	}
 
 	var err error
 
-	p.Texture, _, err = ebitenutil.NewImageFromFile("assets/goll.png") //НЕ РАБОТАЕТ СДЕСЬ
+	p.Texture, _, err = ebitenutil.NewImageFromFile("assets/playerV0.2.png") //НЕ РАБОТАЕТ СДЕСЬ
 	if err != nil {
 		log.Fatal("failed to load lower texture", err)
 	}
+
+	p.AbilityHeadManager.AddAbility(
+		abilities.NewFastRotate(),
+	)
+
 	return p
 }
 
-func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
+func (p *PlayerHead) Update(woroldWiev game.WorldView, manager *hitboxes.CollisionManager) bool {
 	dt := 1.0 / 60.0
 
-	currentRotSpeed := common.HeadRotationSpeed
+	p.CurrentRotSpead = common.HeadRotationSpeed
+	p.HDeceleration = common.HeadDeceleration
+	p.HAceleration = common.HeadAcceleration
 
 	if BoostTimer > 0 {
-		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)
-	}
-	if ForwardTimer > 0 && BoostTimer > 0 {
-		currentRotSpeed = common.MaxSpeed + float64(BoostRotating)*2.5
+		p.CurrentRotSpead = common.HeadRotationSpeed + float64(BoostRotating)
 	}
 
 	rotationInput := 0.0
 
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
 		rotationInput = -1
 	}
 
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
 		rotationInput = 1
 	}
 
@@ -68,10 +84,16 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 		rotationInput = 0
 	}
 
+	if ebiten.IsKeyPressed(ebiten.KeyE) {
+		p.AbilityHeadManager.ActivateAbility("FastRotate", woroldWiev)
+	}
+
+	p.AbilityHeadManager.UpdateAbilities(woroldWiev)
+
 	if rotationInput != 0 {
-		p.AngularVelocity += rotationInput * common.HeadAcceleration * dt
+		p.AngularVelocity += rotationInput * p.HAceleration * dt
 	} else {
-		dec := common.HeadDeceleration * dt
+		dec := p.HDeceleration * dt
 		if math.Abs(p.AngularVelocity) > dec {
 			p.AngularVelocity -= math.Copysign(dec, p.AngularVelocity)
 		} else {
@@ -79,11 +101,11 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 		}
 	}
 
-	if p.AngularVelocity > currentRotSpeed {
-		p.AngularVelocity = currentRotSpeed
+	if p.AngularVelocity > p.CurrentRotSpead {
+		p.AngularVelocity = p.CurrentRotSpead
 	}
-	if p.AngularVelocity < -currentRotSpeed {
-		p.AngularVelocity = -currentRotSpeed
+	if p.AngularVelocity < -p.CurrentRotSpead {
+		p.AngularVelocity = -p.CurrentRotSpead
 	}
 
 	p.Angle += p.AngularVelocity * dt
@@ -111,11 +133,11 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView) bool {
 		if vy < 0 {
 			vy = -vy
 		}
-		if currentRotSpeed < 0 {
-			currentRotSpeed = -currentRotSpeed
+		if p.CurrentRotSpead < 0 {
+			p.CurrentRotSpead = -p.CurrentRotSpead
 		}
 
-		FinalDamage := ((pL.Speed.Vx + pL.Speed.Vy) * 0.1) + (currentRotSpeed * 0.1) + 50
+		FinalDamage := ((pL.Speed.Vx + pL.Speed.Vy) * 0.1) + (p.CurrentRotSpead * 0.1) + 50
 
 		if p.BoostActive {
 			FinalDamage = FinalDamage * 1.5

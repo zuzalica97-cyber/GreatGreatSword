@@ -5,6 +5,7 @@ import (
 	"fmt"
 	enemy "great-sword/game/Enemy"
 	"great-sword/game/common"
+	"great-sword/game/hitboxes"
 	"great-sword/game/player"
 	swords "great-sword/game/player/Swords"
 	game "great-sword/game/world"
@@ -30,14 +31,16 @@ type Game struct {
 	lowerTexture                 *ebiten.Image
 	MainKamera                   kamera.Camera
 	cameraSmoothX, cameraSmoothY float64
+	CollisionManager             *hitboxes.CollisionManager
 }
 
 func NewGame(world *game.World) *Game {
 	var g *Game
 	var err error
 	g = &Game{
-		world:      world,
-		MainKamera: *kamera.NewCamera(0, 0, common.ScreenWidth, common.ScreenHeight),
+		world:            world,
+		MainKamera:       *kamera.NewCamera(0, 0, common.ScreenWidth, common.ScreenHeight),
+		CollisionManager: hitboxes.NewCollisionManager(),
 	}
 
 	g.lowerTexture, _, err = ebitenutil.NewImageFromFile("assets/poll.png") //НЕ РАБОТАЕТ СДЕСЬ
@@ -51,10 +54,7 @@ func NewGame(world *game.World) *Game {
 func (g *Game) ResetGame() {
 	common.Score = 0
 	common.Valwe = 3
-	common.PatheticDamage = common.PathiticNormalDamage
-	common.PatheticBaseSpeed = common.PatheticNormalSpeed
 	common.HatersValwe = 2
-	common.PatheticDistanse = common.PatheticNormalDistanse
 
 	for _, entity := range g.world.SearchEntities("playerLeg") {
 		leg := entity.(*player.PlayerLeg)
@@ -81,13 +81,13 @@ func (g *Game) ResetGame() {
 				for _, entity := range g.world.SearchEntities("pathetic") {
 					path := entity.(*enemy.Pathetic)
 
-					path.Paths = make([]enemy.OnePath, 0)
+					path.Paths = make([]*enemy.OnePath, 0)
 
 					for _, entity := range g.world.SearchEntities("hater") {
 						hater := entity.(*enemy.Haters)
 
-						hater.Bullets = make([]enemy.HaitersBullet, 0)
-						hater.HatersMass = make([]enemy.Haits, 0)
+						hater.Bullets = make([]*enemy.HaitersBullet, 0)
+						hater.HatersMass = make([]*enemy.Haits, 0)
 
 					}
 				}
@@ -108,11 +108,13 @@ func (g *Game) Update() error {
 	}
 
 	for _, entity := range g.world.Entities() {
-		if entity.Update(g.world) {
+		if entity.Update(g.world, g.CollisionManager) {
 			g.gameOver = true
 			return nil
 		}
 	}
+
+	g.CollisionManager.Update()
 
 	for _, Pleg := range g.world.SearchEntities("playerLeg") {
 		p := Pleg.(*player.PlayerLeg)
