@@ -32,15 +32,17 @@ type Game struct {
 	MainKamera                   kamera.Camera
 	cameraSmoothX, cameraSmoothY float64
 	CollisionManager             *hitboxes.CollisionManager
+	frameCounter                 float64 // ВРЕМЕННО
 }
 
-func NewGame(world *game.World) *Game {
+func NewGame(world *game.World, manager *hitboxes.CollisionManager) *Game {
 	var g *Game
 	var err error
 	g = &Game{
 		world:            world,
 		MainKamera:       *kamera.NewCamera(0, 0, common.ScreenWidth, common.ScreenHeight),
-		CollisionManager: hitboxes.NewCollisionManager(),
+		CollisionManager: manager,
+		frameCounter:     1.0,
 	}
 
 	g.lowerTexture, _, err = ebitenutil.NewImageFromFile("assets/poll.png") //НЕ РАБОТАЕТ СДЕСЬ
@@ -53,8 +55,6 @@ func NewGame(world *game.World) *Game {
 
 func (g *Game) ResetGame() {
 	common.Score = 0
-	common.Valwe = 3
-	common.HatersValwe = 2
 
 	for _, entity := range g.world.SearchEntities("playerLeg") {
 		leg := entity.(*player.PlayerLeg)
@@ -81,12 +81,19 @@ func (g *Game) ResetGame() {
 				for _, entity := range g.world.SearchEntities("pathetic") {
 					path := entity.(*enemy.Pathetic)
 
+					for i, _ := range path.Paths {
+						g.CollisionManager.RemoveObject(path.Paths[i]) //Удаляем из обектов коллизии
+					}
+
 					path.Paths = make([]*enemy.OnePath, 0)
 
 					for _, entity := range g.world.SearchEntities("hater") {
 						hater := entity.(*enemy.Haters)
 
-						hater.Bullets = make([]*enemy.HaitersBullet, 0)
+						for i, _ := range hater.HatersMass {
+							g.CollisionManager.RemoveObject(hater.HatersMass[i]) //Удаляем из обектов коллизии
+						}
+
 						hater.HatersMass = make([]*enemy.Haits, 0)
 
 					}
@@ -97,9 +104,17 @@ func (g *Game) ResetGame() {
 
 }
 
-func (g *Game) Update() error {
+func (g *Game) Update() error { // ДЗ нужно сделать так чтобы игра не ломалась при большём количестве врогов. далее добаваить систему васа и икоолизию для стен и игрока. переделать или удолить некоторые функции с коолизией кторые были раньше. добавить противника с большим весом и оружием.
 	if g.gameOver {
 		return nil
+	}
+
+	if g.frameCounter > 0 {
+		g.frameCounter -= 1.0 / 60.0
+		if g.frameCounter <= 0 {
+			g.frameCounter = 1.0
+			g.CollisionManager.Cleanup()
+		}
 	}
 
 	if common.PlayerHelth <= 0 {
@@ -198,14 +213,16 @@ func main() {
 
 	world := game.NewWorld()
 
+	manager := hitboxes.NewCollisionManager()
+
 	world.AddEntity(
-		player.NewPlayerLeg(),
+		player.NewPlayerLeg(manager),
 	)
 	world.AddEntity(
 		player.NewPlayerHead(),
 	)
 	world.AddEntity(
-		swords.NewBlueSword(world),
+		swords.NewBlueSword(world, manager),
 	)
 	world.AddEntity(
 		enemy.NewPathetic(),
@@ -214,7 +231,7 @@ func main() {
 		enemy.NawHaters(),
 	)
 
-	g := NewGame(world)
+	g := NewGame(world, manager)
 
 	fmt.Println("g")
 
@@ -222,8 +239,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-//нужно иссправить функцию драв чтобы каждый был только в сваеё функции и передовать значения вычета камеры через беременные в common к кажой функции
-//такжэ нужно разобратся с тем мусорам когда появляетс кул даун или другой какой таймер нужно удалить все флажки изаменить их на (есл таймер не равер 0 то продолжаем)
-//и нужно ещё сделать моба с аружием и вынести вообще насстройки и правильное отображение оружия в спериальный фаилик чттобы каждый раз ему логику не нужно было писать
-// после можно переходить к генерации комнат

@@ -12,48 +12,13 @@ import (
 var PatheticCooldownTime = 1.0
 var HatersCooldownTime = 1.0
 
-func PatheticCooldown(enemy *OnePath) {
-	enemy.PathericCooldownActive = true
-	enemy.PathericCooldownTimer = PatheticCooldownTime
-}
-
-func HatersCooldown(enemy *Haits) {
-	enemy.HatersCooldownActive = true
-	enemy.HatersCooldownTimer = HatersCooldownTime
-}
-
-func CheckCollisionWithPlayer(enemyX, enemyY, enemySize float64, world game.WorldView) bool {
-
-	var playerX float64
-	var playerY float64
-
-	for _, entity := range world.SearchEntities("playerLeg") {
-		leg := entity.(*player.PlayerLeg)
-
-		playerX = leg.Position.Px
-		playerY = leg.Position.Py
+func getPlayerPosition(worldView game.WorldView) (float64, float64) {
+	for _, pleg := range worldView.SearchEntities("playerLeg") {
+		p := pleg.(game.PlayerLegInter)
+		return p.GetPosition()
 
 	}
-	return enemyX < playerX+common.PlayerSize &&
-		enemyX+enemySize > playerX &&
-		enemyY < playerY+common.PlayerSize &&
-		enemyY+enemySize > playerY
-}
-
-func CheckCollisionWithAttachment(enemyX, enemyY, enemySize float64, attX, attY, attW, attH, attAngle float64) bool {
-	cos := math.Cos(attAngle)
-	sin := math.Sin(attAngle)
-
-	enemyCenterX := enemyX + enemySize/2
-	enemyCenterY := enemyY + enemySize/2
-
-	localX := (enemyCenterX-attX)*cos + (enemyCenterY-attY)*sin
-	localY := -(enemyCenterX-attX)*sin + (enemyCenterY-attY)*cos
-
-	halfW := attW / 2
-	halfH := attH / 2
-
-	return math.Abs(localX) < halfW+enemySize/2 && math.Abs(localY) < halfH+enemySize/2
+	return 0, 0
 }
 
 func RangomSpawnInWall(size int) (float64, float64) {
@@ -99,4 +64,33 @@ func WhereThePlayer(world game.WorldView) (float64, float64, float64, float64, f
 		}
 	}
 	return playerX, playerY, attahmentX, attahmentY, attahmentW, attahmentH, attahmentAngle
+}
+
+// MoveEnemyTowardsPlayer - передвигает врага в сторону игрока
+// Параметры:
+//   - enemyX, enemyY: текущая позиция врага
+//   - playerX, playerY: текущая позиция игрока
+//   - speed: скорость передвижения врага
+//   - dt: дельта времени
+//
+// Возвращает: новые координаты врага (newX, newY)
+func MoveEnemyTowardsPlayer(enemyX, enemyY, playerX, playerY, speed, dt float64) (float64, float64) {
+	// Вычисляем направление к игроку
+	dx := playerX - enemyX
+	dy := playerY - enemyY
+	distance := math.Sqrt(dx*dx + dy*dy)
+
+	// Если враг уже на месте или скорость 0 — не двигаемся
+	if distance <= 0.01 || speed == 0 {
+		return enemyX, enemyY
+	}
+
+	// Нормализуем направление и применяем скорость
+	dirX := dx / distance
+	dirY := dy / distance
+
+	newX := enemyX + dirX*speed*dt
+	newY := enemyY + dirY*speed*dt
+
+	return newX, newY
 }

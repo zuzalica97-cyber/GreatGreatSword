@@ -24,13 +24,17 @@ type BlueSword struct {
 	Texture          *ebiten.Image
 }
 
-func NewBlueSword(world game.WorldView) *BlueSword {
+func NewBlueSword(world game.WorldView, manager *hitboxes.CollisionManager) *BlueSword {
 	b := &BlueSword{}
 
 	b.UpdateAttachmentTarget(world)
 	b.Position.Px = b.TargetX
 	b.Position.Py = b.TargetY
 	b.Angle = b.TargetAngle
+
+	if manager != nil {
+		manager.AddObject(b)
+	}
 
 	return b
 }
@@ -209,6 +213,43 @@ func (b *BlueSword) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	camera.Draw(swordImg, op, screen)
 }
 
+// Для AABB (приближение)
+func (b *BlueSword) GetAABB() (posX, posY, halfW, halfH float64) {
+	maxSize := math.Max(common.SwordAttachmentWidth, common.SwordAttachmentHeight) / 2
+	return b.Position.Px, b.Position.Py, maxSize, maxSize
+}
+
+// Для OBB (точный)
+func (b *BlueSword) GetOBB() (centerX, centerY, halfW, halfH, angle float64) {
+	return b.Position.Px, b.Position.Py,
+		common.SwordAttachmentWidth / 2,
+		common.SwordAttachmentHeight / 2,
+		b.Angle * math.Pi / 180
+}
+
+// GetHitBoxID возвращает уникальный ID для идентификации
+func (b *BlueSword) GetHitBoxID() string {
+	return b.Tag()
+}
+
+// IsStatic проверяет, статичен ли объект (стена, платформа)
+// Если true - объект не двигается при отталкивании
+func (b *BlueSword) IsStatic() bool {
+	return false
+}
+
+// ApplyPush применяет силу отталкивания (сдвиг)
+func (b *BlueSword) ApplyPush(x, y float64) {
+
+}
+
+// OnCollision вызывается при столкновении с другим объектом
+func (b *BlueSword) OnCollision(other hitboxes.HitBoxer) {}
+
 func (b *BlueSword) Tag() string {
 	return "blueSword"
+}
+
+func (b *BlueSword) IsActive() bool {
+	return true
 }

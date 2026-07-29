@@ -2,7 +2,7 @@ package player
 
 import (
 	"great-sword/game"
-	"great-sword/game/abilities"
+	playerabilities "great-sword/game/abilities/playerAbilities"
 	"great-sword/game/common"
 	"great-sword/game/hitboxes"
 	gameL "great-sword/game/world"
@@ -14,6 +14,7 @@ import (
 
 var _ game.Entity = (*PlayerLeg)(nil)
 var _ game.PlayerLegInter = (*PlayerLeg)(nil)
+var _ hitboxes.HitBoxer = (*PlayerLeg)(nil)
 
 type PlayerLeg struct {
 	Position          common.PointPlayer
@@ -28,7 +29,7 @@ type PlayerLeg struct {
 	AbilityLegManager *gameL.PlayerWorld
 }
 
-func NewPlayerLeg() *PlayerLeg {
+func NewPlayerLeg(manager *hitboxes.CollisionManager) *PlayerLeg {
 
 	p := &PlayerLeg{
 		Position: common.PointPlayer{
@@ -42,8 +43,12 @@ func NewPlayerLeg() *PlayerLeg {
 		AbilityLegManager: gameL.NewPlayerWorld(),
 	}
 	p.AbilityLegManager.AddAbility(
-		abilities.NewDash(),
+		playerabilities.NewDash(),
 	)
+
+	if manager != nil {
+		manager.AddObject(p)
+	}
 
 	return p
 }
@@ -189,9 +194,37 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 	return false
 }
 
+func (p *PlayerLeg) GetAABB() (posX, posY, halfW, halfH float64) {
+	halfSize := common.PlayerSize / 2
+	return p.Position.Px + float64(halfSize), p.Position.Py + float64(halfSize), float64(halfSize), float64(halfSize)
+}
+
+// GetHitBoxID возвращает уникальный ID для идентификации
+func (p *PlayerLeg) GetHitBoxID() string {
+	return p.Tag()
+}
+
+// IsStatic проверяет, статичен ли объект (стена, платформа)
+// Если true - объект не двигается при отталкивании
+func (p *PlayerLeg) IsStatic() bool {
+	return false
+}
+
+// ApplyPush применяет силу отталкивания (сдвиг)
+func (p *PlayerLeg) ApplyPush(x, y float64) {
+
+}
+
+// OnCollision вызывается при столкновении с другим объектом
+func (p *PlayerLeg) OnCollision(other hitboxes.HitBoxer) {}
+
 func (p *PlayerLeg) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 }
 
 func (p *PlayerLeg) Tag() string {
 	return "playerLeg"
+}
+
+func (p *PlayerLeg) IsActive() bool {
+	return true
 }

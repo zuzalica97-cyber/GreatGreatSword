@@ -1,298 +1,176 @@
 package enemy
 
 import (
-	"fmt"
 	"great-sword/game"
+	enemyabilities "great-sword/game/abilities/enemyAbilities"
 	"great-sword/game/common"
 	"great-sword/game/hitboxes"
 	"great-sword/game/player"
 	"image/color"
-	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector" // ← импорт библиотеки
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/setanarut/kamera/v2"
 )
 
 var _ game.Entity = (*Pathetic)(nil)
 var _ hitboxes.HitBoxer = (*OnePath)(nil)
+var _ enemyabilities.EnemyUser = (*OnePath)(nil)
+
+// ============================================================
+// ОСНОВНАЯ СТРУКТУРА ВРАГА
+// ============================================================
 
 type Pathetic struct {
 	Paths []*OnePath
 }
 
 type OnePath struct {
-	Size                   int
-	PX, PY                 float64
-	Helth                  int
-	Damage                 int
-	Speed                  float64
-	MaxSpeed               float64
-	Distance               float64
+	*BaseEnemy // ← ВСТРАИВАНИЕ! Все методы BaseEnemy доступны
+
+	// Специфичные поля (только то, чего нет в BaseEnemy)
 	PathericCooldownActive bool
 	PathericCooldownTimer  float64
-	Active                 bool
-	Texture                *ebiten.Image
-	Color                  color.RGBA
 
-	// Поля для рывка
-	DashActive      bool
-	DashDistance    float64
-	DashTimer       float64
-	DashTimerMax    float64
-	DashTargetX     float64
-	DashTargetY     float64
-	DashDirX        float64
-	DashDirY        float64
-	DashSpeed       float64
-	DashSpeedMax    float64
-	DashCooldown    float64
-	DashCooldownMax float64
+	// Способности
+	Abilities []enemyabilities.EnemyAbility
+
+	// Кэш для Target (позиция игрока) - уже есть в BaseEnemy
 }
+
+// ============================================================
+// КОНСТРУКТОР
+// ============================================================
 
 func NewPathetic() *Pathetic {
-	p := &Pathetic{}
-	return p
+	return &Pathetic{
+		Paths: make([]*OnePath, 0),
+	}
 }
+
+// ============================================================
+// СОЗДАНИЕ ВРАГА
+// ============================================================
 
 func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManager) {
 	enemy := &OnePath{
-		Size:     65,
-		PX:       x,
-		PY:       y,
-		Active:   true,
-		Helth:    50,
-		Damage:   5,
-		Speed:    150,
-		MaxSpeed: 200,
-		Distance: 400,
-		Color:    color.RGBA{150, 150, 150, 255},
+		BaseEnemy: NewBaseEnemy(
+			x, y,
+			65,  // size
+			50,  // health
+			5,   // damage
+			100, // baseSpeed
+			300, // maxSpeed
+			color.RGBA{150, 150, 150, 255},
+			"pathetic",
+		),
+	}
 
-		DashActive:      false,
-		DashDistance:    80,
-		DashTimer:       0.9,
-		DashTimerMax:    0.9,
-		DashSpeed:       500,
-		DashSpeedMax:    500,
-		DashCooldown:    0,
-		DashCooldownMax: 2.0,
+	// Добавляем способности
+	enemy.Abilities = []enemyabilities.EnemyAbility{
+		enemyabilities.NewChaseAbility(enemy.Speed, enemy.MaxSpeed, 600, 250),
+		enemyabilities.NewDashAbility(250, 500, 2, 0.3),
 	}
 
 	p.Paths = append(p.Paths, enemy)
-	manager.AddObject(enemy)
-}
-
-// PerformDash - выполняет рывок с ФИКСИРОВАННЫМ направлением
-func (enemy *OnePath) PerformDash(targetX, targetY float64, dashSpeed, dashDuration float64) {
-	dx := targetX - enemy.PX
-	dy := targetY - enemy.PY
-	distance := math.Sqrt(dx*dx + dy*dy)
-
-	if distance > 0.01 {
-		enemy.DashDirX = dx / distance
-		enemy.DashDirY = dy / distance
-		enemy.DashSpeed = dashSpeed
-		enemy.DashActive = true
-		enemy.DashTimer = dashDuration
+	if manager != nil {
+		manager.AddObject(enemy)
 	}
 }
 
-// UpdateDash - обновляет состояние рывка
-func (enemy *OnePath) UpdateDash(dt float64) bool {
-	if !enemy.DashActive {
-		return false
-	}
-
-	enemy.DashTimer -= dt
-
-	enemy.PX += enemy.DashDirX * enemy.DashSpeed * dt
-	enemy.PY += enemy.DashDirY * enemy.DashSpeed * dt
-
-	if enemy.PX < 0 || enemy.PX > common.RoomWidth ||
-		enemy.PY < 0 || enemy.PY > common.RoomHeight {
-		enemy.DashActive = false
-		enemy.DashCooldown = enemy.DashCooldownMax
-		return true
-	}
-
-	if enemy.DashTimer <= 0 {
-		enemy.DashActive = false
-		enemy.DashSpeed = 0
-		enemy.DashCooldown = enemy.DashCooldownMax
-		return true
-	}
-
-	return false
+// PatheticCooldown - специфичная для этого врага
+func PatheticCooldown(enemy *OnePath) {
+	enemy.CooldownActive = true
+	enemy.CooldownTimer = 2.0
 }
 
-// ===== РЕАЛИЗАЦИЯ INTERFACE HitBoxer =====
-
-// GetAABB - возвращает AABB для проверки коллизий
-func (e *OnePath) GetAABB() (posX, posY, halfW, halfH float64) {
-	halfSize := float64(e.Size) / 2
-	return e.PX + halfSize, e.PY + halfSize, halfSize, halfSize
-}
-
-// GetHitBoxID - возвращает уникальный ID
-func (e *OnePath) GetHitBoxID() string {
-	return fmt.Sprintf("enemy_%p", e) // используем адрес как ID
-}
-
-// IsActive - проверяет, активен ли враг
-func (e *OnePath) IsActive() bool {
-	return e.Active
-}
-
-// IsStatic - враг не статичен (двигается)
-func (e *OnePath) IsStatic() bool {
-	return false
-}
-
-// ApplyPush - применяет силу отталкивания
-func (e *OnePath) ApplyPush(x, y float64) {
-	switch e.DashActive {
-	case false:
-		e.PX += x
-		e.PY += y
-	}
-}
-
-// OnCollision - вызывается при столкновении с другим объектом
 func (e *OnePath) OnCollision(other hitboxes.HitBoxer) {
-}
-
-func (p *Pathetic) UpatePathetics(dt float64, worldView game.WorldView) {
-
-	playerX, playerY, attahmentX, attahmentY, attahmentW, attahmentH, attahmentAngle := WhereThePlayer(worldView)
-
-	for i := 0; i < len(p.Paths); i++ {
-		enemy := p.Paths[i]
-		if !enemy.Active {
-			continue
-		}
-
-		if enemy.PathericCooldownActive {
-			enemy.PathericCooldownTimer -= dt
-			if enemy.PathericCooldownTimer <= 0 {
-				enemy.PathericCooldownActive = false
-			}
-		}
-
-		// ===== КУЛДАУН РЫВКА (ВСЕГДА) =====
-		if enemy.DashCooldown > 0 {
-			enemy.DashCooldown -= dt
-			if enemy.DashCooldown <= 0 {
-				enemy.DashSpeed = enemy.DashSpeedMax
-				enemy.DashTimer = enemy.DashTimerMax
-			}
-		}
-
-		// ===== ОБНОВЛЕНИЕ РЫВКА =====
-		if enemy.DashActive {
-			enemy.UpdateDash(dt)
-			if !enemy.DashActive {
-				continue
-			}
-		}
-
-		if !enemy.DashActive {
-			dx := playerX - enemy.PX
-			dy := playerY - enemy.PY
-			distance := math.Sqrt(dx*dx + dy*dy)
-
-			var speed float64
-
-			if distance > enemy.Distance {
-				speed = enemy.Speed
-			} else {
-				t := 1.0 - distance/enemy.Distance
-				speed = enemy.Speed + t*float64(enemy.MaxSpeed-enemy.Speed) // решить пробемму с залипанием и рванным движением. после добавить коллизи к остальным обьектам а также добавить механику веса и отпрежинивание при столканвении.
-			}
-
-			// ===== АКТИВАЦИЯ РЫВКА =====
-			if distance < enemy.Distance && !enemy.DashActive && enemy.DashCooldown <= 0 {
-				enemy.PerformDash(playerX, playerY, enemy.DashSpeed, enemy.DashTimer)
-				continue
-			}
-
-			if enemy.PathericCooldownActive {
-				speed = -100
-			}
-
-			if distance > 0.01 {
-				enemy.PX += (dx / distance) * speed * dt
-				enemy.PY += (dy / distance) * speed * dt
-			}
-		}
-
-		// ===== КОЛЛИЗИИ С МЕЧОМ =====
-		if CheckCollisionWithAttachment(enemy.PX, enemy.PY, float64(enemy.Size), attahmentX,
-			attahmentY, float64(attahmentW), float64(attahmentH), attahmentAngle) {
-
-			if !enemy.PathericCooldownActive || enemy.PathericCooldownTimer <= 0.5 {
-				enemy.Helth -= common.PlayerDamage
-				PatheticCooldown(enemy)
-			}
-
-			if enemy.Helth <= 0 {
-				p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
-				i--
-				common.Score++
-				player.ActivateBoost()
-			}
-			continue
-		}
-
-		// ===== КОЛЛИЗИИ С ИГРОКОМ =====
-		if CheckCollisionWithPlayer(enemy.PX, enemy.PY, float64(enemy.Size), worldView) {
-
-			if !enemy.PathericCooldownActive {
-				for _, pleg := range worldView.SearchEntities("playerLeg") {
-					p := pleg.(*player.PlayerLeg)
-					p.DamagePlayer(enemy.Damage)
-				}
-			}
-
-			PatheticCooldown(enemy)
-
-			if !enemy.DashActive {
-				dx := playerX - enemy.PX
-				dy := playerY - enemy.PY
-				distance := math.Sqrt(dx*dx + dy*dy)
-				if distance > 0.01 {
-					enemy.PX += (dx / distance) * 50 * dt
-					enemy.PY += (dy / distance) * 50 * dt
-				}
-			}
-		}
+	otherID := other.GetHitBoxID()
+	switch otherID {
+	case "blueSword":
+		e.TakeDamage(common.PlayerDamage)
+	case "playerLeg":
+		if !e.CooldownActive {
+			common.PlayerHelth -= float64(e.Damage)
+			PatheticCooldown(e)
+		} //ДЗ нужно сделать нармальное нанесение урона. сделать нормальный фиал Haters и для него способности быть на дистации и гинерировать пули
 	}
 }
 
-func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool { //ДЗ нужно сделать проверку коллизей общеё для вех врагов также нужен интерфейс типа враг с функциями чтобы с ними взаимодействовать. после нужено добавить врагов с оружиями и добавить эффекты для игрока и варогов.
-	// И нужно подпаравит деш чтобы у нас был не 1 а 3 и визальные эффекты к способностям.
+// ============================================================
+// ОБНОВЛЕНИЕ
+// ============================================================
+
+func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 	dt := 1.0 / 60.0
 
-	if len(p.Paths) < 8 {
+	playerX, playerY := getPlayerPosition(worldView)
+
+	if len(p.Paths) < 1 {
 		x, y := RangomSpawnInWall(50)
 		p.SpawnPathetic(x, y, manager)
 	}
 
-	if common.Valwe > common.MaxValwe {
-		common.Valwe = common.MaxValwe
-	}
+	for i := 0; i < len(p.Paths); i++ {
+		enemy := p.Paths[i]
 
-	p.UpatePathetics(dt, worldView)
+		// === ПРОВЕРКА СМЕРТИ ===
+		if !enemy.IsActive() || enemy.GetHealth() <= 0 {
+			if manager != nil {
+				manager.RemoveObject(enemy)
+			}
+			p.Paths[i] = nil
+			p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
+			i--
+			common.Score++
+			player.ActivateBoost()
+			continue
+		}
+
+		// === ОБНОВЛЕНИЕ КУЛДАУНА ===
+		enemy.UpdateCooldown(dt)
+
+		// === УСТАНОВКА ЦЕЛИ ===
+		enemy.SetTarget(playerX, playerY)
+
+		enemy.CurrentSpeed = enemy.Speed
+
+		// === ОБНОВЛЕНИЕ СПОСОБНОСТЕЙ ===
+		for _, ability := range enemy.Abilities {
+			ability.Activate(enemy, worldView)
+			ability.Update(enemy, dt, manager)
+		}
+
+		if enemy.CooldownActive {
+			enemy.CurrentSpeed = -enemy.CurrentSpeed / 3
+		}
+
+		// === ДВИЖЕНИЕ ===
+		if enemy.GetTargetDistance() > 0.01 && enemy.GetSpeed() != 0 {
+			newX, newY := MoveEnemyTowardsPlayer(
+				enemy.X, enemy.Y,
+				playerX, playerY,
+				enemy.GetSpeed(),
+				dt,
+			)
+			enemy.SetPosition(newX, newY)
+		}
+	}
 
 	return false
 }
 
+// ============================================================
+// ОТРИСОВКА
+// ============================================================
+
 func (p *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	for _, enemy := range p.Paths {
-		screenX := enemy.PX - camera.X
-		screenY := enemy.PY - camera.Y
+		screenX := enemy.X - camera.X
+		screenY := enemy.Y - camera.Y
 
 		Color := enemy.Color
-		if enemy.PathericCooldownActive {
+		if enemy.CooldownActive {
 			Color = color.RGBA{120, 120, 120, 255}
 		}
 
@@ -308,6 +186,14 @@ func (p *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	}
 }
 
+// ============================================================
+// ИНТЕРФЕЙС game.Entity
+// ============================================================
+
 func (p *Pathetic) Tag() string {
 	return "pathetic"
+}
+
+func (p *Pathetic) IsActive() bool {
+	return true
 }
