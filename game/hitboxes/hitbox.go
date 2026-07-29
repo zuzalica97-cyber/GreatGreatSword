@@ -2,7 +2,7 @@ package hitboxes
 
 import (
 	"github.com/setanarut/coll"
-	"github.com/setanarut/v"
+	v "github.com/setanarut/v"
 )
 
 // HitBoxer - интерфейс для всех сущностей, у которых есть коллизия
@@ -28,6 +28,15 @@ type HitBoxer interface {
 	OnCollision(other HitBoxer)
 }
 
+// ============================================================
+// ВРАЩАЮСЕИСЯ ОБЬЕКТЫ
+// ============================================================
+
+type RotatableHitBoxer interface {
+	HitBoxer
+	GetOBB() (centerX, centerY, halfW, halfH, angle float64) // центр, половинные размеры, угол
+}
+
 // CollisionManager - управляет коллизиями между всеми HitBoxer
 type CollisionManager struct {
 	objects []HitBoxer
@@ -48,6 +57,7 @@ func (cm *CollisionManager) AddObject(obj HitBoxer) {
 func (cm *CollisionManager) RemoveObject(obj HitBoxer) {
 	for i, o := range cm.objects {
 		if o == obj {
+			cm.objects[i] = nil
 			cm.objects = append(cm.objects[:i], cm.objects[i+1:]...)
 			break
 		}
@@ -56,38 +66,88 @@ func (cm *CollisionManager) RemoveObject(obj HitBoxer) {
 
 // Update - проверяет все коллизии между объектами
 func (cm *CollisionManager) Update() {
-	// Проходим по всем парам объектов
 	for i := 0; i < len(cm.objects); i++ {
 		for j := i + 1; j < len(cm.objects); j++ {
 			obj1 := cm.objects[i]
 			obj2 := cm.objects[j]
 
-			// Пропускаем неактивные объекты
 			if !obj1.IsActive() || !obj2.IsActive() {
 				continue
 			}
 
-			// === ПОЛУЧАЕМ AABB ===
-			px1, py1, hw1, hh1 := obj1.GetAABB()
-			px2, py2, hw2, hh2 := obj2.GetAABB()
-
-			// === СОЗДАЁМ AABB ===
-			aabb1 := &coll.AABB{
-				Pos:  v.Vec{X: px1, Y: py1},
-				Half: v.Vec{X: hw1, Y: hh1},
-			}
-			aabb2 := &coll.AABB{
-				Pos:  v.Vec{X: px2, Y: py2},
-				Half: v.Vec{X: hw2, Y: hh2},
-			}
-
-			// === ПРОВЕРЯЕМ СТОЛКНОВЕНИЕ ===
-			hit := &coll.Hit{}
-			if coll.BoxBoxOverlap(aabb1, aabb2, hit) {
-				// === ОБРАБАТЫВАЕМ СТОЛКНОВЕНИЕ ===
-				cm.resolveCollision(obj1, obj2, hit)
-			}
+			cm.checkCollision(obj1, obj2)
 		}
+	}
+}
+
+// checkCollision - определяет тип коллизии и вызывает нужную проверку
+func (cm *CollisionManager) checkCollision(obj1, obj2 HitBoxer) {
+
+	//проверка евляютса ли они вращяюсемися
+	rot1, isRot1 := obj1.(RotatableHitBoxer)
+	rot2, isRot2 := obj2.(RotatableHitBoxer)
+
+	switch {
+	case isRot1 && isRot2:
+		// TODO: реализовать OBB vs OBB, если нужно
+		// cm.checkOBBvsOBB(rot1, rot2)
+	case isRot1:
+		cm.checkOBBvsAABB(rot1, obj2)
+	case isRot2:
+		cm.checkOBBvsAABB(rot2, obj1)
+	default:
+		cm.checkAABBvsAABB(obj1, obj2)
+	}
+}
+
+// checkOBBvsOBB - проверка столкновения двух вращающихся объектов
+// ТУТ ДОЛЖНО БЫТЬ ПРОВЕРКА ДВУХ ВРОЩЯЮЩИХСЯ ОБЬЕКТВОВ
+
+// checkOBBvsAABB - проверка столкновения вращающегося и статичного объекта
+func (cm *CollisionManager) checkOBBvsAABB(rot RotatableHitBoxer, stat HitBoxer) {
+	cx, cy, hw, hh, angle := rot.GetOBB()
+
+	obb := &coll.OBB{
+		Pos:   v.Vec{X: cx, Y: cy},
+		Half:  v.Vec{X: hw, Y: hh},
+		Angle: angle,
+	}
+
+	px, py, hw2, hh2 := stat.GetAABB()
+	aabb := &coll.AABB{
+		Pos:  v.Vec{X: px, Y: py},
+		Half: v.Vec{X: hw2, Y: hh2},
+	}
+
+	hit := &coll.Hit{}
+
+	// 3. Используем готовую функцию из библиотеки coll
+	// Она вернёт true, если AABB и OBB пересекаются
+	if coll.BoxOrientedBoxOverlap(aabb, obb) {
+		// Если столкновение есть, обрабатываем его
+		// Так как у нас нет hit-информации, создаём пустой хит или
+		// вызываем resolveCollision без hit-данных
+		cm.resolveCollision(rot, stat, hit)
+	}
+}
+
+// checkAABBvsAABB - проверка столкновения двух статичных объектов
+func (cm *CollisionManager) checkAABBvsAABB(obj1, obj2 HitBoxer) {
+	px1, py1, hw1, hh1 := obj1.GetAABB()
+	px2, py2, hw2, hh2 := obj2.GetAABB()
+
+	aabb1 := &coll.AABB{
+		Pos:  v.Vec{X: px1, Y: py1},
+		Half: v.Vec{X: hw1, Y: hh1},
+	}
+	aabb2 := &coll.AABB{
+		Pos:  v.Vec{X: px2, Y: py2},
+		Half: v.Vec{X: hw2, Y: hh2},
+	}
+
+	hit := &coll.Hit{}
+	if coll.BoxBoxOverlap(aabb1, aabb2, hit) {
+		cm.resolveCollision(obj1, obj2, hit)
 	}
 }
 
@@ -106,11 +166,13 @@ func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit) {
 	}
 
 	// Отталкиваем объекты
+	pushFactor := 0.1 // ← 10% от глубины проникновения
+
 	if !a.IsStatic() {
-		a.ApplyPush(-normal.X*penetration/2, -normal.Y*penetration/2)
+		a.ApplyPush(-normal.X*penetration*pushFactor, -normal.Y*penetration*pushFactor)
 	}
 	if !b.IsStatic() {
-		b.ApplyPush(normal.X*penetration/2, normal.Y*penetration/2)
+		b.ApplyPush(normal.X*penetration*pushFactor, normal.Y*penetration*pushFactor)
 	}
 }
 
@@ -122,4 +184,53 @@ func (cm *CollisionManager) Clear() {
 // GetObjects - возвращает все объекты
 func (cm *CollisionManager) GetObjects() []HitBoxer {
 	return cm.objects
+}
+
+// ============================================================
+// CompactSlice - удаляет все nil элементы из слайса указателей
+// ============================================================
+//
+// [T any]     - "Дженерик": T может быть ЛЮБЫМ типом (заполнитель)
+// []*T        - слайс УКАЗАТЕЛЕЙ на тип T (работаем с оригиналами)
+// []*T        - возвращаем такой же слайс УКАЗАТЕЛЕЙ
+//
+// Зачем:
+// 1. Удаляем мёртвые объекты (enemy = nil)
+// 2. Освобождаем память
+// 3. Избавляемся от мусора в слайсе
+// ============================================================
+
+func CompactSlice[T any](slice []*T) []*T {
+	// Создаём новый слайс с ТАКОЙ ЖЕ вместимостью (cap),
+	// чтобы избежать лишних аллокаций
+	compacted := make([]*T, 0, len(slice))
+
+	// Проходим по всем элементам
+	for _, item := range slice {
+		// Если элемент НЕ nil - сохраняем
+		if item != nil {
+			compacted = append(compacted, item)
+		}
+		// Если nil - пропускаем (удаляем)
+	}
+
+	// Возвращаем чистый слайс без nil
+	return compacted
+}
+
+// В hitboxes/collision_manager.go
+
+// Cleanup - удаляет все nil объекты из менеджера
+func (cm *CollisionManager) Cleanup() {
+	compacted := make([]HitBoxer, 0, len(cm.objects))
+	for _, obj := range cm.objects {
+		if obj != nil {
+			compacted = append(compacted, obj)
+		}
+	}
+	cm.objects = compacted
+}
+
+func (cm *CollisionManager) LenColisionObjects() int {
+	return len(cm.objects)
 }

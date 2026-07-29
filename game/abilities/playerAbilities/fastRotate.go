@@ -1,4 +1,4 @@
-package abilities
+package playerabilities
 
 import (
 	"great-sword/game"

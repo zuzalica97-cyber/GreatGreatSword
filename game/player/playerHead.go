@@ -2,7 +2,7 @@ package player
 
 import (
 	"great-sword/game"
-	"great-sword/game/abilities"
+	playerabilities "great-sword/game/abilities/playerAbilities"
 	"great-sword/game/common"
 	"great-sword/game/hitboxes"
 	"log"
@@ -52,7 +52,7 @@ func NewPlayerHead() *PlayerHead {
 	}
 
 	p.AbilityHeadManager.AddAbility(
-		abilities.NewFastRotate(),
+		playerabilities.NewFastRotate(),
 	)
 
 	return p
@@ -181,4 +181,8 @@ func (p *PlayerHead) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 
 func (p *PlayerHead) Tag() string {
 	return "playerHead"
+}
+
+func (p *PlayerHead) IsActive() bool {
+	return true
 }
