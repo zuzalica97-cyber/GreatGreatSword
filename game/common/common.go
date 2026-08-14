@@ -25,7 +25,7 @@ var HeadDeceleration = HeadNormalDeceleration
 var Acceleration = 500.0
 var Deceleration = 300.0
 
-var PlayerDamage int
+var PlayerDamage float64
 var PlayerHelth = MaxPlayerHelth
 var MaxPlayerHelth = 100.0
 var MaxSpeed = 300.0

@@ -5,6 +5,7 @@ import (
 	playerabilities "great-sword/game/abilities/playerAbilities"
 	"great-sword/game/common"
 	"great-sword/game/hitboxes"
+	"image/color"
 	"log"
 
 	"math"
@@ -143,40 +144,31 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView, manager *hitboxes.Collisi
 			FinalDamage = FinalDamage * 1.5
 		}
 
-		common.PlayerDamage = int(FinalDamage)
+		common.PlayerDamage = FinalDamage
 	}
 
 	return false
 }
 
 func (p *PlayerHead) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+	// Центр игрока в мировых координатах
 	centerX := p.PositionHead.Px + common.PlayerHeadSize/2
 	centerY := p.PositionHead.Py + common.PlayerHeadSize/2
 
-	if p.Texture != nil {
-		texW := float64(p.Texture.Bounds().Dx())
-		texH := float64(p.Texture.Bounds().Dy())
+	// Экранные координаты с учётом камеры
+	screenX := centerX - camera.X
+	screenY := centerY - camera.Y
 
-		scaleX := common.PlayerHeadSize / texW
-		scaleY := common.PlayerHeadSize / texH
-
-		opHat := &ebiten.DrawImageOptions{}
-
-		// 1. Смещаем к центру текстуры
-		opHat.GeoM.Translate(-texW/2, -texH/2)
-
-		// 2. Масштабируем
-		opHat.GeoM.Scale(scaleX, scaleY)
-
-		// 3. Поворачиваем
-		opHat.GeoM.Rotate(p.Angle * math.Pi / 180)
-
-		// 4. Смещаем в МИРОВУЮ позицию (центр игрока)
-		opHat.GeoM.Translate(centerX, centerY)
-
-		// Рисуем через камеру
-		camera.Draw(p.Texture, opHat, screen)
-	}
+	// 1. Рисуем повёрнутый красный квадрат
+	DrawRotatedRect(
+		screen,
+		screenX,
+		screenY,
+		common.PlayerHeadSize,
+		common.PlayerHeadSize,
+		p.Angle,                    // ← угол поворота
+		color.RGBA{255, 0, 0, 255}, // ярко-красный
+	)
 }
 
 func (p *PlayerHead) Tag() string {

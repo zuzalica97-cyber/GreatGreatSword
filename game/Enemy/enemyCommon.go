@@ -94,3 +94,12 @@ func MoveEnemyTowardsPlayer(enemyX, enemyY, playerX, playerY, speed, dt float64)
 
 	return newX, newY
 }
+
+func MoveEnemyToTareget(enemy *BaseEnemy, dt float64) (float64, float64) {
+	if enemy.CurrentSpeed != 0 {
+		newX := enemy.X + enemy.DirectionX*enemy.CurrentSpeed*dt
+		newY := enemy.Y + enemy.DirectionY*enemy.CurrentSpeed*dt
+		return newX, newY
+	}
+	return enemy.X, enemy.Y
+}

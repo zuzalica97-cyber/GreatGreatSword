@@ -58,6 +58,8 @@ func (h *Haters) SpawnHiters(x, y float64, manager *hitboxes.CollisionManager) {
 			150, // baseSpeed
 			300, // maxSpeed
 			color.RGBA{180, 150, 150, 255},
+			2,
+			0.5,
 			"hater",
 		),
 		Distanse: 500,
@@ -85,7 +87,7 @@ func (e *Haits) OnCollision(other hitboxes.HitBoxer) {
 	otherID := other.GetHitBoxID()
 	switch otherID {
 	case "blueSword":
-		e.TakeDamage(common.PlayerDamage)
+		e.TakeDamage(float64(common.PlayerDamage))
 	case "playerLeg":
 		HatersCooldown(e)
 	}
@@ -170,15 +172,19 @@ func (h *Haters) UpdateHaiters(dt float64, world game.WorldView, manager *hitbox
 		}
 
 		// === ДВИЖЕНИЕ ===
-		if enemy.GetTargetDistance() > 0.01 && enemy.GetSpeed() != 0 {
-			newX, newY := MoveEnemyTowardsPlayer(
-				enemy.X, enemy.Y,
-				playerX, playerY,
-				enemy.GetSpeed(),
-				dt,
-			)
-			enemy.SetPosition(newX, newY)
-		}
+		friction := 0.9999   // чем ближе к 1, тем дольше скользит
+		acceleration := 50.0 // как быстро разгоняется
+
+		newSpeed, newDirX, newDirY := enemy.EnemySlideMovmentFunc(friction, acceleration, dt)
+
+		enemy.CurrentSpeed = newSpeed
+		enemy.SetDirection(newDirX, newDirY)
+
+		// === ДВИЖЕНИЕ ===
+		newX, newY := MoveEnemyToTareget(enemy.BaseEnemy, dt)
+
+		enemy.SetPosition(newX, newY)
+
 	}
 }
 
@@ -199,7 +205,7 @@ func (h *Haters) Update(worldView game.WorldView, manager *hitboxes.CollisionMan
 	}
 
 	// Спавн врагов
-	if len(h.HatersMass) < 1 {
+	if len(h.HatersMass) < 0 {
 		x, y := RangomSpawnInWall(50)
 		h.SpawnHiters(x, y, manager)
 	}

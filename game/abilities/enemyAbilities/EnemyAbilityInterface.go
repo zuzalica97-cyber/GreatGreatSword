@@ -25,4 +25,8 @@ type EnemyUser interface {
 	SetTarget(x, y float64)
 	IsMoving() bool
 	ApplyPush(x, y float64)
+	GetDirection() (float64, float64)
+	SetDirection(x, y float64)
+	UpdateDirection(targetX, targetY float64)
+	GetTargetDirection(targetX, targetY float64) (float64, float64)
 }

@@ -17,15 +17,18 @@ var _ game.PlayerLegInter = (*PlayerLeg)(nil)
 var _ hitboxes.HitBoxer = (*PlayerLeg)(nil)
 
 type PlayerLeg struct {
-	Position          common.PointPlayer
-	Speed             common.PointSpeed
-	Texture           *ebiten.Image
-	AxelerationLeg    float64
-	DeAxelerationLeg  float64
-	CurrentMaxSpeed   float64
-	Rebound           float64
-	MoveX             float64
-	MoveY             float64
+	Position         common.PointPlayer
+	Speed            common.PointSpeed
+	Texture          *ebiten.Image
+	AxelerationLeg   float64
+	DeAxelerationLeg float64
+	CurrentMaxSpeed  float64
+	Rebound          float64
+	MoveX            float64
+	MoveY            float64
+	Weight           float64
+	Density          float64
+
 	AbilityLegManager *gameL.PlayerWorld
 }
 
@@ -40,6 +43,8 @@ func NewPlayerLeg(manager *hitboxes.CollisionManager) *PlayerLeg {
 			Vx: 0,
 			Vy: 0,
 		},
+		Weight:            4,
+		Density:           2.0,
 		AbilityLegManager: gameL.NewPlayerWorld(),
 	}
 	p.AbilityLegManager.AddAbility(
@@ -212,7 +217,27 @@ func (p *PlayerLeg) IsStatic() bool {
 
 // ApplyPush применяет силу отталкивания (сдвиг)
 func (p *PlayerLeg) ApplyPush(x, y float64) {
+	p.Position.Px += x
+	p.Position.Py += y
 
+}
+
+// GetWeight - возвращает вес объекта
+func (b *PlayerLeg) GetWeight() float64 {
+	return b.Weight
+}
+
+// GetDensity - возвращает плотность объекта
+func (b *PlayerLeg) GetDensity() float64 {
+	return b.Density
+}
+
+func (p *PlayerLeg) HasAura() bool {
+	return false
+}
+
+func (p *PlayerLeg) AffectedByAura() bool {
+	return false
 }
 
 // OnCollision вызывается при столкновении с другим объектом

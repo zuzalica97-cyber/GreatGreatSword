@@ -13,39 +13,31 @@ import (
 	"github.com/setanarut/kamera/v2"
 )
 
-var _ game.Entity = (*Pathetic)(nil)
-var _ hitboxes.HitBoxer = (*OnePath)(nil)
-var _ enemyabilities.EnemyUser = (*OnePath)(nil)
-var _ hitboxes.LetterReceiver = (*OnePath)(nil)
+var _ game.Entity = (*Berseks)(nil)
+var _ hitboxes.HitBoxer = (*OneBerserk)(nil)
+var _ enemyabilities.EnemyUser = (*OneBerserk)(nil)
 
 // ============================================================
 // ОСНОВНАЯ СТРУКТУРА ВРАГА
 // ============================================================
 
-type Pathetic struct {
-	Paths []*OnePath
+type Berseks struct {
+	BerserkMass []*OneBerserk
 }
 
-type OnePath struct {
-	*BaseEnemy // ← ВСТРАИВАНИЕ! Все методы BaseEnemy доступны
-
-	// Специфичные поля (только то, чего нет в BaseEnemy)
-	PathericCooldownActive bool
-	PathericCooldownTimer  float64
-
-	// Способности
+type OneBerserk struct {
+	*BaseEnemy
 	Abilities []enemyabilities.EnemyAbility
-
-	// Кэш для Target (позиция игрока) - уже есть в BaseEnemy
+	oldSpeed  float64
 }
 
 // ============================================================
 // КОНСТРУКТОР
 // ============================================================
 
-func NewPathetic() *Pathetic {
-	return &Pathetic{
-		Paths: make([]*OnePath, 0),
+func NewBerserk() *Berseks {
+	return &Berseks{
+		BerserkMass: make([]*OneBerserk, 0),
 	}
 }
 
@@ -53,64 +45,57 @@ func NewPathetic() *Pathetic {
 // СОЗДАНИЕ ВРАГА
 // ============================================================
 
-func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManager) {
-	enemy := &OnePath{
+func (b *Berseks) Spawn(x, y float64, manager *hitboxes.CollisionManager) {
+	enemy := &OneBerserk{
 		BaseEnemy: NewBaseEnemy(
 			x, y,
-			65,  // size
-			50,  // helth
-			5,   // damage
-			100, // speed
-			300, // maxSpeed
-			color.RGBA{150, 150, 150, 255},
-			3,
-			0.6,
-			"pathetic",
+			150,                         // size
+			200,                         // health
+			10,                          // damage
+			200,                         // baseSpeed
+			400,                         // maxSpeed
+			color.RGBA{90, 90, 90, 255}, //ДЗ нужно поравить силу ооталкивания чтобы тяжёлые обьекты легко отталкивали лёгкие а то аура мешает
+			50,
+			1,
+			"berserk",
 		),
+		oldSpeed: 0,
 	}
 
-	// Добавляем способности
-	enemy.Abilities = []enemyabilities.EnemyAbility{
-		enemyabilities.NewChaseAbility(enemy.Speed, enemy.MaxSpeed, 600, 0.01),
-		enemyabilities.NewDashAbility(250, 450, 2, 0.5),
-	}
+	enemy.Abilities = append(enemy.Abilities,
+		enemyabilities.NewDashAbility(800, 400, 2, 1),
+	)
 
-	p.Paths = append(p.Paths, enemy)
+	b.BerserkMass = append(b.BerserkMass, enemy)
 	if manager != nil {
 		manager.AddObject(enemy)
 	}
-}
-
-// PatheticCooldown - специфичная для этого врага
-func PatheticCooldown(enemy *OnePath) {
-	enemy.CooldownActive = true
-	enemy.CooldownTimer = 2.0
 }
 
 // ============================================================
 // ОБНОВЛЕНИЕ
 // ============================================================
 
-func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
+func (b *Berseks) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 	dt := 1.0 / 60.0
 
 	playerX, playerY := getPlayerPosition(worldView)
 
-	if len(p.Paths) < 1 {
+	if len(b.BerserkMass) < 1 {
 		x, y := RangomSpawnInWall(50)
-		p.SpawnPathetic(x, y, manager)
+		b.Spawn(x, y, manager)
 	}
 
-	for i := 0; i < len(p.Paths); i++ {
-		enemy := p.Paths[i]
+	for i := 0; i < len(b.BerserkMass); i++ {
+		enemy := b.BerserkMass[i]
 
 		// === ПРОВЕРКА СМЕРТИ ===
 		if !enemy.IsActive() || enemy.GetHealth() <= 0 {
 			if manager != nil {
 				manager.RemoveObject(enemy)
 			}
-			p.Paths[i] = nil
-			p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
+			b.BerserkMass[i] = nil
+			b.BerserkMass = append(b.BerserkMass[:i], b.BerserkMass[i+1:]...)
 			i--
 			common.Score++
 			player.ActivateBoost()
@@ -123,9 +108,9 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 		// === УСТАНОВКА ЦЕЛИ ===
 		enemy.SetTarget(playerX, playerY)
 
+		// === ОБНОВЛЕНИЕ СПОСОБНОСТЕЙ ===
 		enemy.CurrentSpeed = enemy.Speed
 
-		// === ОБНОВЛЕНИЕ СПОСОБНОСТЕЙ ===
 		for _, ability := range enemy.Abilities {
 			ability.Activate(enemy, worldView)
 			ability.Update(enemy, dt, manager)
@@ -134,12 +119,8 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 		// === ОБНОВЛЕНИЕ ЭФФЕКТОВ ===
 		enemy.UpdateEffects(dt)
 
-		if enemy.CooldownActive {
-			enemy.CurrentSpeed = -enemy.CurrentSpeed / 3
-		}
-
-		friction := 0.7      // чем ближе к 1, тем дольше скользит
-		acceleration := 70.0 // как быстро разгоняется
+		friction := 0.9999   // чем ближе к 1, тем дольше скользит
+		acceleration := 50.0 // как быстро разгоняется
 
 		newSpeed, newDirX, newDirY := enemy.EnemySlideMovmentFunc(friction, acceleration, dt)
 
@@ -151,6 +132,29 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 
 		enemy.SetPosition(newX, newY)
 
+		// === КУЛДАУН (ОТТАЛКИВАНИЕ) ===
+		if enemy.CooldownActive {
+			enemy.CurrentSpeed = -enemy.CurrentSpeed / 3
+		}
+
+		// === ГРАНИЦЫ КОМНАТЫ ===
+		if enemy.X < 0 {
+			enemy.X = 0
+			enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
+		}
+		if enemy.X > common.RoomWidth-float64(enemy.Size) {
+			enemy.X = common.RoomWidth - float64(enemy.Size)
+			enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
+		}
+		if enemy.Y < 0 {
+			enemy.Y = 0
+			enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
+		}
+		if enemy.Y > common.RoomHeight-float64(enemy.Size) {
+			enemy.Y = common.RoomHeight - float64(enemy.Size)
+			enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
+		}
+
 	}
 
 	return false
@@ -160,15 +164,20 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 // ОТРИСОВКА
 // ============================================================
 
-func (p *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
-	for _, enemy := range p.Paths {
-
+func (b *Berseks) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+	for _, enemy := range b.BerserkMass {
 		screenX := enemy.X - camera.X
 		screenY := enemy.Y - camera.Y
 
 		Color := enemy.Color
 		if enemy.CooldownActive {
-			Color = color.RGBA{120, 120, 120, 255}
+			Color = color.RGBA{90, 90, 90, 255}
+		}
+		for _, ability := range enemy.Abilities {
+			if ability.Name() == "Dash" && ability.IsActive() {
+				Color = color.RGBA{140, 90, 90, 225}
+				break
+			}
 		}
 
 		vector.FillRect(
@@ -184,7 +193,6 @@ func (p *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 		for _, effect := range enemy.Effects {
 			effect.Draw(screen, camera, enemy)
 		}
-
 	}
 }
 
@@ -192,10 +200,10 @@ func (p *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 // ИНТЕРФЕЙС game.Entity
 // ============================================================
 
-func (p *Pathetic) Tag() string {
-	return "pathetic"
+func (b *Berseks) Tag() string {
+	return "berserk"
 }
 
-func (p *Pathetic) IsActive() bool {
+func (b *Berseks) IsActive() bool {
 	return true
 }

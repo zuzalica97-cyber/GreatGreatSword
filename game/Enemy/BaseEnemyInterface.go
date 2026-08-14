@@ -1,9 +1,18 @@
 package enemy
 
 import (
+	"fmt"
+	movmentcommon "great-sword/game/Enemy/movmentCommon"
+	"great-sword/game/effects"
+	"great-sword/game/hitboxes"
+
 	"image/color"
 	"math"
 )
+
+var _ hitboxes.EffectUser = (*BaseEnemy)(nil)
+var _ hitboxes.HitBoxer = (*BaseEnemy)(nil)
+var _ hitboxes.LetterReceiver = (*BaseEnemy)(nil)
 
 // ============================================================
 // БАЗОВАЯ СТРУКТУРА ВРАГА
@@ -17,7 +26,7 @@ type BaseEnemy struct {
 	Size int
 
 	// Характеристики
-	Health   int
+	Health   float64
 	Damage   int
 	Speed    float64
 	MaxSpeed float64
@@ -42,27 +51,49 @@ type BaseEnemy struct {
 	SpeedX, SpeedY float64
 	CurrentSpeed   float64
 
+	DirectionX, DirectionY float64
+
+	// Вес объекта (чем больше, тем сложнее сдвинуть)
+	Weight float64
+
+	// Плотность объекта (0.0 - 1.0)
+	// 0.0 = проницаемый, 1.0 = твёрдый (стена)
+	Density float64
+
 	// Тег
 	TagName string
+
+	HasAuraField        bool // имеет ли ауру
+	AffectedByAuraField bool // реагирует ли на чужую ауру
+
+	EffectsManagerEnemy *effects.EffectManager
+	Effects             []hitboxes.Effect // список активных эффектов
+
+	// Письма (для системы писем)
+	letters []*hitboxes.Letter
 }
 
 // ============================================================
 // КОНСТРУКТОР
 // ============================================================
 
-func NewBaseEnemy(x, y float64, size, health, damage int, speed, maxSpeed float64, color color.RGBA, tag string) *BaseEnemy {
+func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, maxSpeed float64, color color.RGBA, weight, density float64, tag string) *BaseEnemy {
 	return &BaseEnemy{
-		X:                x,
-		Y:                y,
-		Size:             size,
-		Health:           health,
-		Damage:           damage,
-		Speed:            speed,
-		MaxSpeed:         maxSpeed,
-		Active:           true,
-		Color:            color,
-		TagName:          tag,
-		CooldownDuration: 2.0,
+		X:                   x,
+		Y:                   y,
+		Size:                size,
+		Health:              health,
+		Damage:              damage,
+		Speed:               speed,
+		MaxSpeed:            maxSpeed,
+		Active:              true,
+		Color:               color,
+		Weight:              weight,
+		Density:             density,
+		TagName:             tag,
+		CooldownDuration:    2.0,
+		HasAuraField:        true,
+		AffectedByAuraField: true,
 	}
 }
 
@@ -101,6 +132,9 @@ func (b *BaseEnemy) SetPosition(x, y float64) {
 
 func (b *BaseEnemy) GetSize() int {
 	return b.Size
+}
+func (b *BaseEnemy) SetSize(size int) {
+	b.Size = size
 }
 
 // ============================================================
@@ -145,21 +179,149 @@ func (b *BaseEnemy) SetTarget(x, y float64) {
 }
 
 // ============================================================
+// МЕТОДЫ ДЛЯ РАБОТЫ С НАПРАВЛЕНИЕМ
+// ============================================================
+
+// GetDirection - возвращает текущее направление движения врага
+// Если враг не двигается, возвращает (0, 0)
+func (b *BaseEnemy) GetDirection() (float64, float64) {
+	return b.DirectionX, b.DirectionY
+}
+
+// SetDirection - устанавливает направление движения
+func (b *BaseEnemy) SetDirection(x, y float64) {
+	b.DirectionX = x
+	b.DirectionY = y
+}
+
+// UpdateDirection - обновляет направление к цели
+// Вычисляет направление от текущей позиции к целевой
+func (b *BaseEnemy) UpdateDirection(targetX, targetY float64) {
+	dx := targetX - b.X
+	dy := targetY - b.Y
+	distance := math.Sqrt(dx*dx + dy*dy)
+
+	if distance > 0.01 {
+		b.DirectionX = dx / distance
+		b.DirectionY = dy / distance
+	} else {
+		b.DirectionX = 0
+		b.DirectionY = 0
+	}
+}
+
+// GetTargetDirection - возвращает направление к цели (без сохранения)
+func (b *BaseEnemy) GetTargetDirection(targetX, targetY float64) (float64, float64) {
+	dx := targetX - b.X
+	dy := targetY - b.Y
+	distance := math.Sqrt(dx*dx + dy*dy)
+
+	if distance > 0.01 {
+		return dx / distance, dy / distance
+	}
+	return 0, 0
+}
+
+// ============================================================
+// РЕАЛИЗАЦИЯ ИНТЕРФЕЙСА LetterSender
+// ============================================================
+
+// В враге (получатель)
+func (b *BaseEnemy) OnCollision(effects []hitboxes.Effect) {
+	for _, effect := range effects {
+		b.AddEffect(effect)
+	}
+}
+
+// ============================================================
+// МЕТОДЫ ДЛЯ РАБОТЫ С ЭФФЕКТАМИ
+// ============================================================
+
+func (b *BaseEnemy) AddEffect(effect hitboxes.Effect) { //Нужно реализовать OnColision прямо в BaseEnemy чтобы всё работало.
+
+	// Проверяем, есть ли уже такой эффект
+	for _, e := range b.Effects {
+		if e.GetType() == effect.GetType() && e.IsActive() && effect.CanExtend() {
+			// Суммируем время
+			e.SetDuration(e.GetDuration() + effect.GetDuration()*0.5)
+			e.SetTimer(e.GetDuration() * 0.5)
+			fmt.Printf("Суммируем эффект: %s, новое время: %.1f\n",
+				effect.GetType(), e.GetDuration())
+			return
+		}
+	}
+
+	b.Effects = append(b.Effects, effect)
+	effect.Apply(b)
+}
+
+func (b *BaseEnemy) RemoveEffect(effectID string) {
+	for i, e := range b.Effects {
+		if e.GetID() == effectID {
+			b.Effects = append(b.Effects[:i], b.Effects[i+1:]...)
+			return
+		}
+	}
+}
+
+func (b *BaseEnemy) HasEffect(effectType string) bool {
+	for _, e := range b.Effects {
+		if e.GetType() == effectType && e.IsActive() {
+			return true
+		}
+	}
+	return false
+}
+
+// UpdateEffects - обновляет все эффекты врага
+// Возвращает true, если есть активные эффекты
+func (b *BaseEnemy) UpdateEffects(dt float64) bool {
+	hasActive := false
+	for i := 0; i < len(b.Effects); i++ {
+		effect := b.Effects[i]
+		if effect.Update(b, dt) && !effect.IsActive() {
+			// Эффект завершён — удаляем
+			b.Effects = append(b.Effects[:i], b.Effects[i+1:]...)
+			i--
+		} else {
+			hasActive = true
+		}
+	}
+	return hasActive
+}
+
+// ============================================================
+// РЕАЛИЗАЦИЯ ИНТЕРФЕЙСА EffectUser (hitboxes.EffectUser)
+// ============================================================
+
+func (b *BaseEnemy) GetEffects() []hitboxes.Effect {
+	return b.Effects
+}
+
+func (b *BaseEnemy) ClearEffects() {
+	b.Effects = make([]hitboxes.Effect, 0)
+}
+
+func (b *BaseEnemy) GetMaxSpeed() float64 {
+	return b.MaxSpeed
+}
+
+// ============================================================
 // МЕТОДЫ ДЛЯ РАБОТЫ СО ЗДОРОВЬЕМ
 // ============================================================
 
-func (b *BaseEnemy) GetHealth() int {
+func (b *BaseEnemy) GetHealth() float64 {
 	return b.Health
 }
 
-func (b *BaseEnemy) SetHealth(health int) {
+func (b *BaseEnemy) SetHealth(health float64) {
 	b.Health = health
 	if b.Health <= 0 {
 		b.Active = false
 	}
 }
 
-func (b *BaseEnemy) TakeDamage(damage int) {
+func (b *BaseEnemy) TakeDamage(damage float64) {
 	b.Health -= damage
 	if b.Health <= 0 {
 		b.Active = false
@@ -214,6 +376,24 @@ func (b *BaseEnemy) IsStatic() bool {
 	return false
 }
 
+// GetWeight - возвращает вес объекта
+func (b *BaseEnemy) GetWeight() float64 {
+	return b.Weight
+}
+
+// GetDensity - возвращает плотность объекта
+func (b *BaseEnemy) GetDensity() float64 {
+	return b.Density
+}
+
+func (b *BaseEnemy) HasAura() bool {
+	return b.HasAuraField
+}
+
+func (b *BaseEnemy) AffectedByAura() bool {
+	return b.AffectedByAuraField
+}
+
 // ============================================================
 // ИНТЕРФЕЙС game.Entity
 // ============================================================
@@ -226,6 +406,65 @@ func (b *BaseEnemy) Tag() string {
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================================
 
+// IsMoving - проверяет, движется ли враг в данный момент
+// Возвращает true, если есть скорость по X, Y или общая скорость
 func (b *BaseEnemy) IsMoving() bool {
 	return b.SpeedX != 0 || b.SpeedY != 0 || b.CurrentSpeed != 0
+}
+
+// GetDistToTarget - вычисляет расстояние и вектор до цели (игрока)
+// Возвращает:
+//   - dist: расстояние до цели
+//   - dx, dy: вектор от врага к цели (не нормализованный)
+func (b *BaseEnemy) GetDistToTarget() (dist float64, dx float64, dy float64) {
+	X, Y := b.GetTarget()
+
+	dx = X - b.X
+	dy = Y - b.Y
+	dist = math.Sqrt(dx*dx + dy*dy)
+	return dist, dx, dy
+}
+
+// GetTargetDir - возвращает нормализованное направление к цели (игроку)
+// Возвращает:
+//   - targetDirX, targetDirY: единичный вектор направления к игроку
+//   - если цель не достижима, возвращает (0, 0)
+func (b *BaseEnemy) GetTargetDir() (float64, float64) {
+	var targetDirX, targetDirY float64
+
+	dist, dx, dy := b.GetDistToTarget()
+
+	if dist > 0.01 {
+		targetDirX = dx / dist
+		targetDirY = dy / dist
+	} else {
+		targetDirX, targetDirY = 0, 0
+	}
+	return targetDirX, targetDirY
+}
+
+// EnemySlideMovmentFunc - применяет движение со скольжением к врагу
+// Параметры:
+//   - friction: коэффициент трения (0.95-0.999) — чем выше, тем дольше скользит
+//   - acceleration: скорость разгона (чем выше, тем быстрее разгоняется)
+//   - dt: дельта времени (обычно 1/60)
+//
+// Возвращает:
+//   - newSpeed: новая скорость врага
+//   - newDirX, newDirY: новое направление движения
+func (b *BaseEnemy) EnemySlideMovmentFunc(friction, acceleration, dt float64) (float64, float64, float64) {
+	currentDirX, currentDirY := b.GetDirection()
+
+	targetDirX, targetDirY := b.GetTargetDir()
+
+	newSpeed, newDirX, newDirY := movmentcommon.SlideMovement(
+		b.CurrentSpeed,
+		b.Speed,
+		currentDirX, currentDirY,
+		targetDirX, targetDirY,
+		friction,
+		acceleration,
+		dt,
+	)
+	return newSpeed, newDirX, newDirY
 }
