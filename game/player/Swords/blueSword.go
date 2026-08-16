@@ -1,7 +1,6 @@
 package swords
 
 import (
-	"fmt"
 	"great-sword/game"
 	"great-sword/game/common"
 	effectsmass "great-sword/game/effects/effectsMass"
@@ -35,7 +34,7 @@ func NewBlueSword(world game.WorldView, manager *hitboxes.CollisionManager) *Blu
 	b := &BlueSword{
 		Weight:  7,
 		Density: 5.5,
-		Letter:  hitboxes.NewLetter(true, 0.5, effectsmass.NewBurnEffect(2.0, 10.0, 1), effectsmass.NewDamageEffect(50)), // горение 3 сек, 5 урона/сек
+		Letter:  hitboxes.NewLetter(true, 0.5, effectsmass.NewDamageEffect(0)), // горение 3 сек, 5 урона/сек
 	}
 
 	b.UpdateAttachmentTarget(world)
@@ -282,10 +281,8 @@ func (b *BlueSword) AffectedByAura() bool {
 // ============================================================
 
 func (b *BlueSword) GetEffectsForTransfer() []hitboxes.Effect {
-	if b.Letter == nil || !b.Letter.CanDeliver() || b.Letter.Timer > 0 {
-		fmt.Println(7)
-		return nil
-	}
+
+	b.Letter.Deliver()
 
 	var effects []hitboxes.Effect
 
@@ -293,7 +290,7 @@ func (b *BlueSword) GetEffectsForTransfer() []hitboxes.Effect {
 		effects = append(effects, effect.Clone())
 	}
 
-	b.Letter.Deliver() //Нужно исправить чтобы у писем был кул даун
+	//Нужно исправить чтобы у писем был кул даун И востоновит доступ к GitHub
 	return effects
 }
 

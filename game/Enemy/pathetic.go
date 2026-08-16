@@ -4,6 +4,7 @@ import (
 	"great-sword/game"
 	enemyabilities "great-sword/game/abilities/enemyAbilities"
 	"great-sword/game/common"
+	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
 	"great-sword/game/player"
 	"image/color"
@@ -74,6 +75,9 @@ func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManage
 		enemyabilities.NewChaseAbility(enemy.Speed, enemy.MaxSpeed, 600, 0.01),
 		enemyabilities.NewDashAbility(250, 450, 2, 0.5),
 	}
+	enemy.letters = []*hitboxes.Letter{
+		hitboxes.NewLetter(true, 0.5, effectsmass.NewDamageEffect(5)),
+	}
 
 	p.Paths = append(p.Paths, enemy)
 	if manager != nil {
@@ -96,7 +100,7 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 
 	playerX, playerY := getPlayerPosition(worldView)
 
-	if len(p.Paths) < 1 {
+	if len(p.Paths) < 10 {
 		x, y := RangomSpawnInWall(50)
 		p.SpawnPathetic(x, y, manager)
 	}
@@ -119,6 +123,10 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 
 		// === ОБНОВЛЕНИЕ КУЛДАУНА ===
 		enemy.UpdateCooldown(dt)
+
+		for _, letter := range enemy.letters {
+			letter.UpdateCoolDown(dt)
+		}
 
 		// === УСТАНОВКА ЦЕЛИ ===
 		enemy.SetTarget(playerX, playerY)

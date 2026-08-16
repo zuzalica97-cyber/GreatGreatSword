@@ -2,8 +2,10 @@ package effectsmass
 
 import (
 	"great-sword/game/hitboxes"
+	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/setanarut/kamera/v2"
 )
 
@@ -50,6 +52,23 @@ func (d *DamageEffect) OnTransfer(newTarget hitboxes.EffectUser) {
 }
 
 func (b *DamageEffect) Draw(screen *ebiten.Image, camera *kamera.Camera, target hitboxes.EffectUser) {
+	enemyX, enemyY := target.GetPosition()
+
+	screenX := enemyX - camera.X
+	screenY := enemyY - camera.Y
+
+	size := target.GetSize()
+
+	vector.FillRect(
+		screen,
+		float32(screenX),
+		float32(screenY),
+		float32(size),
+		float32(size),
+		color.RGBA{255, 0, 0, 100},
+		true,
+	)
+
 }
 
 // Clone - создаёт копию эффекта

@@ -29,8 +29,8 @@ type PlayerLegInter interface {
 	GetDirection() (float64, float64)
 	GetPosition() (float64, float64)
 	SetPosition(x, y float64)
-	GetSpeed() (float64, float64)
-	SetSpeed(vx, vy float64)
+	GetSpeedXY() (float64, float64)
+	SetSpeedXY(vx, vy float64)
 	GetMaxSpeed() float64
 	SetMaxSpeed(speed float64)
 	IsMoving() bool

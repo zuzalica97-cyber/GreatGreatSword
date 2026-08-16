@@ -1,7 +1,6 @@
 package player
 
 import (
-	"great-sword/game/common"
 	"math"
 )
 
@@ -10,11 +9,11 @@ func (p *PlayerLeg) ApplyForce(vx, vy float64) {
 	p.Speed.Vy = vy
 }
 
-func (p *PlayerLeg) GetSpeed() (float64, float64) {
+func (p *PlayerLeg) GetSpeedXY() (float64, float64) {
 	return p.Speed.Vx, p.Speed.Vy
 }
 
-func (p *PlayerLeg) SetSpeed(vx, vy float64) {
+func (p *PlayerLeg) SetSpeedXY(vx, vy float64) {
 	p.Speed.Vx = vx
 	p.Speed.Vy = vy
 }
@@ -62,15 +61,6 @@ func (p *PlayerLeg) IsMoving() bool {
 
 func (p *PlayerLeg) IsGrounded() bool {
 	return p.Speed.Vy == 0
-}
-
-// ---- ЗДОРОВЬЕ ----
-func (p *PlayerLeg) GetHealth() float64 {
-	return common.PlayerHelth
-}
-
-func (p *PlayerLeg) SetHealth(health float64) {
-	common.PlayerHelth = health
 }
 
 // ---- ВСПОМОГАТЕЛЬНЫЕ ----

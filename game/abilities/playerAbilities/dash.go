@@ -60,7 +60,7 @@ func (d *Dash) Update(world game.WorldView) bool {
 				if d.Timer <= 0 {
 					d.Active = false
 					// Восстанавливаем скорость
-					p.SetSpeed(lastMoveX, lastMoveY)
+					p.SetSpeedXY(lastMoveX, lastMoveY)
 				}
 			}
 		}
@@ -85,7 +85,7 @@ func (d *Dash) Activate(world game.WorldView) {
 		// Получаем направление движения
 		moveX, moveY := p.GetDirection()
 
-		lastMoveX, lastMoveY = p.GetSpeed()
+		lastMoveX, lastMoveY = p.GetSpeedXY()
 
 		// Если не двигается — рывок по углу
 		if moveX == 0 && moveY == 0 {

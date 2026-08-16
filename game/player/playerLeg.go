@@ -16,6 +16,10 @@ var _ game.Entity = (*PlayerLeg)(nil)
 var _ game.PlayerLegInter = (*PlayerLeg)(nil)
 var _ hitboxes.HitBoxer = (*PlayerLeg)(nil)
 
+var _ hitboxes.EffectUser = (*PlayerLeg)(nil)
+var _ hitboxes.LetterReceiver = (*PlayerLeg)(nil)
+var _ hitboxes.LetterSender = (*PlayerLeg)(nil)
+
 type PlayerLeg struct {
 	Position         common.PointPlayer
 	Speed            common.PointSpeed
@@ -30,6 +34,9 @@ type PlayerLeg struct {
 	Density          float64
 
 	AbilityLegManager *gameL.PlayerWorld
+
+	Effects []hitboxes.Effect  // список активных эффектов
+	Letters []*hitboxes.Letter // письма для отправки
 }
 
 func NewPlayerLeg(manager *hitboxes.CollisionManager) *PlayerLeg {
@@ -140,6 +147,8 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 
 	p.AbilityLegManager.UpdateAbilities(worldView)
 
+	p.UpdateEffects(dt)
+
 	if p.MoveX != 0 { //Применяем ускорение
 		p.Speed.Vx += p.MoveX * p.AxelerationLeg * dt
 	} else {
@@ -239,9 +248,6 @@ func (p *PlayerLeg) HasAura() bool {
 func (p *PlayerLeg) AffectedByAura() bool {
 	return false
 }
-
-// OnCollision вызывается при столкновении с другим объектом
-func (p *PlayerLeg) OnCollision(other hitboxes.HitBoxer) {}
 
 func (p *PlayerLeg) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 }

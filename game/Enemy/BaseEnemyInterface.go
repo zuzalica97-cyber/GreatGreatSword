@@ -13,6 +13,7 @@ import (
 var _ hitboxes.EffectUser = (*BaseEnemy)(nil)
 var _ hitboxes.HitBoxer = (*BaseEnemy)(nil)
 var _ hitboxes.LetterReceiver = (*BaseEnemy)(nil)
+var _ hitboxes.LetterSender = (*BaseEnemy)(nil) // проверяем, что реализует интерфейс
 
 // ============================================================
 // БАЗОВАЯ СТРУКТУРА ВРАГА
@@ -234,6 +235,38 @@ func (b *BaseEnemy) OnCollision(effects []hitboxes.Effect) {
 }
 
 // ============================================================
+// РЕАЛИЗАЦИЯ ИНТЕРФЕЙСА LetterSender (ОТПРАВКА ПИСЕМ)
+// ============================================================
+
+// GetEffectsForTransfer - возвращает эффекты для передачи
+func (b *BaseEnemy) GetEffectsForTransfer() []hitboxes.Effect {
+	var clones []hitboxes.Effect
+	for _, letter := range b.letters {
+		if !letter.CanDeliver() {
+			continue
+		}
+
+		letter.Deliver()
+
+		// Возвращаем клоны эффектов для передачи
+		for _, effect := range b.Effects {
+			clones = append(clones, effect.Clone())
+		}
+	}
+	return clones
+}
+
+// CanSendEffects - можно ли отправить эффекты сейчас
+func (b *BaseEnemy) CanSendEffects() bool {
+	return len(b.letters) > 0
+}
+
+// OnEffectsSent - вызывается после отправки эффектов
+func (b *BaseEnemy) OnEffectsSent() {
+	// После отправки очищаем эффекты (или можно оставить)
+}
+
+// ============================================================
 // МЕТОДЫ ДЛЯ РАБОТЫ С ЭФФЕКТАМИ
 // ============================================================
 
@@ -279,7 +312,7 @@ func (b *BaseEnemy) UpdateEffects(dt float64) bool {
 	hasActive := false
 	for i := 0; i < len(b.Effects); i++ {
 		effect := b.Effects[i]
-		if effect.Update(b, dt) && !effect.IsActive() {
+		if effect.Update(b, dt) || !effect.IsActive() {
 			// Эффект завершён — удаляем
 			b.Effects = append(b.Effects[:i], b.Effects[i+1:]...)
 			i--

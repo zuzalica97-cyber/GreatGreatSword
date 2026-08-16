@@ -23,7 +23,6 @@ func ABSender(a HitBoxer, b HitBoxer) {
 
 	effects := sender.GetEffectsForTransfer()
 	if len(effects) == 0 {
-		//log.Println("effects пустые")
 		return
 	}
 
