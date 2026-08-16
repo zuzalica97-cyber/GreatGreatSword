@@ -230,10 +230,11 @@ func main() {
 	world.AddEntity(
 		enemy.NawHaters(),
 	)
+	world.AddEntity(
+		enemy.NewBerserk(),
+	)
 
 	g := NewGame(world, manager)
-
-	fmt.Println("g")
 
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)

@@ -63,6 +63,24 @@ func (b *EnemyBullet) OnCollision(other hitboxes.HitBoxer) {
 	}
 }
 
+// GetWeight - возвращает вес объекта
+func (b *EnemyBullet) GetWeight() float64 {
+	return 0
+}
+
+// GetDensity - возвращает плотность объекта
+func (b *EnemyBullet) GetDensity() float64 {
+	return 0
+}
+
+func (b *EnemyBullet) HasAura() bool {
+	return false
+}
+
+func (b *EnemyBullet) AffectedByAura() bool {
+	return false
+}
+
 // ============================================================
 // СПОСОБНОСТЬ ВЫСТРЕЛА
 // ============================================================

@@ -40,13 +40,11 @@ func (d *DashAbility) Update(enemy EnemyUser, dt float64, manager *hitboxes.Coll
 	if d.Active {
 		d.Timer -= dt
 
-		// Движение в фиксированном направлении
-		x, y := enemy.GetPosition()
-		enemy.SetPosition(x+d.DirX*d.Speed*dt, y+d.DirY*d.Speed*dt)
+		enemy.SetDirection(d.DirX, d.DirY)
+		enemy.SetSpeed(d.Speed)
 
 		if d.Timer <= 0 {
 			d.Active = false
-			enemy.SetSpeed(d.OriginalSpeed) // восстанавливаем скорость
 		}
 		return true
 	}
@@ -70,9 +68,6 @@ func (d *DashAbility) Activate(enemy EnemyUser, world game.WorldView) bool {
 		// ФИКСИРУЕМ направление в момент активации
 		d.DirX = dx / dist
 		d.DirY = dy / dist
-
-		// Сохраняем текущую скорость для восстановления
-		d.OriginalSpeed = enemy.GetSpeed()
 
 		// Активируем рывок
 		d.Active = true

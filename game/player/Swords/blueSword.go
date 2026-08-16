@@ -3,6 +3,7 @@ package swords
 import (
 	"great-sword/game"
 	"great-sword/game/common"
+	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
 	"great-sword/game/player"
 	"image/color"
@@ -14,6 +15,7 @@ import (
 )
 
 var _ game.Entity = (*BlueSword)(nil)
+var _ hitboxes.LetterSender = (*BlueSword)(nil) // проверяем, что реализует интерфейс
 
 type BlueSword struct {
 	Position         common.PointPlayer
@@ -21,11 +23,19 @@ type BlueSword struct {
 	Angle            float64
 	TargetAngle      float64
 	SnowCollision    bool
+	Weight           float64
+	Density          float64
 	Texture          *ebiten.Image
+	Letter           *hitboxes.Letter
+	Damage           float64
 }
 
 func NewBlueSword(world game.WorldView, manager *hitboxes.CollisionManager) *BlueSword {
-	b := &BlueSword{}
+	b := &BlueSword{
+		Weight:  7,
+		Density: 5.5,
+		Letter:  hitboxes.NewLetter(true, 0.5, effectsmass.NewDamageEffect(0)), // горение 3 сек, 5 урона/сек
+	}
 
 	b.UpdateAttachmentTarget(world)
 	b.Position.Px = b.TargetX
@@ -178,6 +188,10 @@ func (b *BlueSword) ResolveCollision(world game.WorldView) {
 
 func (b *BlueSword) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 
+	dt := 1.0 / 60.0
+
+	b.Letter.UpdateCoolDown(dt)
+
 	if player.SwordIxist {
 
 		b.UpdateAttachmentTarget(worldView)
@@ -240,11 +254,58 @@ func (b *BlueSword) IsStatic() bool {
 
 // ApplyPush применяет силу отталкивания (сдвиг)
 func (b *BlueSword) ApplyPush(x, y float64) {
-
+	b.Position.Px += x / 5
+	b.Position.Py += y / 5
 }
 
-// OnCollision вызывается при столкновении с другим объектом
-func (b *BlueSword) OnCollision(other hitboxes.HitBoxer) {}
+// GetWeight - возвращает вес объекта
+func (b *BlueSword) GetWeight() float64 {
+	return b.Weight
+}
+
+// GetDensity - возвращает плотность объекта
+func (b *BlueSword) GetDensity() float64 {
+	return b.Density
+}
+
+func (b *BlueSword) HasAura() bool {
+	return false
+}
+
+func (b *BlueSword) AffectedByAura() bool {
+	return false
+}
+
+// ============================================================
+// РЕАЛИЗАЦИЯ ИНТЕРФЕЙСА LetterSender
+// ============================================================
+
+func (b *BlueSword) GetEffectsForTransfer() []hitboxes.Effect {
+
+	b.Letter.Deliver()
+
+	var effects []hitboxes.Effect
+
+	for _, effect := range b.Letter.Effects {
+		effects = append(effects, effect.Clone())
+	}
+
+	//Нужно исправить чтобы у писем был кул даун И востоновит доступ к GitHub
+	return effects
+}
+
+func (b *BlueSword) CanSendEffects() bool {
+	return b.Letter != nil && b.Letter.CanDeliver()
+}
+
+func (b *BlueSword) OnEffectsSent() {
+	if b.Letter != nil {
+		b.Letter.Deliver()
+	}
+}
+
+//===============================================================
+//===============================================================
 
 func (b *BlueSword) Tag() string {
 	return "blueSword"

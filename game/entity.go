@@ -37,6 +37,10 @@ type Enemy interface {
 	SetSpeed(speed float64)
 	GetSpeedXY() (float64, float64)
 	SetSpeedXY(x, y float64)
+	GetDirection() (float64, float64)
+	SetDirection(x, y float64)
+	UpdateDirection(targetX, targetY float64)
+	GetTargetDirecton(targetX, targetY float64)
 
 	// Действия
 	TakeDamage(damage int)   // получить урон

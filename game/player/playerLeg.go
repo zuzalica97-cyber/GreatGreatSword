@@ -16,17 +16,27 @@ var _ game.Entity = (*PlayerLeg)(nil)
 var _ game.PlayerLegInter = (*PlayerLeg)(nil)
 var _ hitboxes.HitBoxer = (*PlayerLeg)(nil)
 
+var _ hitboxes.EffectUser = (*PlayerLeg)(nil)
+var _ hitboxes.LetterReceiver = (*PlayerLeg)(nil)
+var _ hitboxes.LetterSender = (*PlayerLeg)(nil)
+
 type PlayerLeg struct {
-	Position          common.PointPlayer
-	Speed             common.PointSpeed
-	Texture           *ebiten.Image
-	AxelerationLeg    float64
-	DeAxelerationLeg  float64
-	CurrentMaxSpeed   float64
-	Rebound           float64
-	MoveX             float64
-	MoveY             float64
+	Position         common.PointPlayer
+	Speed            common.PointSpeed
+	Texture          *ebiten.Image
+	AxelerationLeg   float64
+	DeAxelerationLeg float64
+	CurrentMaxSpeed  float64
+	Rebound          float64
+	MoveX            float64
+	MoveY            float64
+	Weight           float64
+	Density          float64
+
 	AbilityLegManager *gameL.PlayerWorld
+
+	Effects []hitboxes.Effect  // список активных эффектов
+	Letters []*hitboxes.Letter // письма для отправки
 }
 
 func NewPlayerLeg(manager *hitboxes.CollisionManager) *PlayerLeg {
@@ -40,6 +50,8 @@ func NewPlayerLeg(manager *hitboxes.CollisionManager) *PlayerLeg {
 			Vx: 0,
 			Vy: 0,
 		},
+		Weight:            4,
+		Density:           2.0,
 		AbilityLegManager: gameL.NewPlayerWorld(),
 	}
 	p.AbilityLegManager.AddAbility(
@@ -135,6 +147,8 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 
 	p.AbilityLegManager.UpdateAbilities(worldView)
 
+	p.UpdateEffects(dt)
+
 	if p.MoveX != 0 { //Применяем ускорение
 		p.Speed.Vx += p.MoveX * p.AxelerationLeg * dt
 	} else {
@@ -212,11 +226,28 @@ func (p *PlayerLeg) IsStatic() bool {
 
 // ApplyPush применяет силу отталкивания (сдвиг)
 func (p *PlayerLeg) ApplyPush(x, y float64) {
+	p.Position.Px += x
+	p.Position.Py += y
 
 }
 
-// OnCollision вызывается при столкновении с другим объектом
-func (p *PlayerLeg) OnCollision(other hitboxes.HitBoxer) {}
+// GetWeight - возвращает вес объекта
+func (b *PlayerLeg) GetWeight() float64 {
+	return b.Weight
+}
+
+// GetDensity - возвращает плотность объекта
+func (b *PlayerLeg) GetDensity() float64 {
+	return b.Density
+}
+
+func (p *PlayerLeg) HasAura() bool {
+	return false
+}
+
+func (p *PlayerLeg) AffectedByAura() bool {
+	return false
+}
 
 func (p *PlayerLeg) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 }

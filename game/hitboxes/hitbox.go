@@ -5,6 +5,10 @@ import (
 	v "github.com/setanarut/v"
 )
 
+// Фиксированные значения
+const auraRadius = 30.0
+const auraForce = 3.0
+
 // HitBoxer - интерфейс для всех сущностей, у которых есть коллизия
 type HitBoxer interface {
 	// GetAABB возвращает AABB для проверки коллизий
@@ -24,8 +28,22 @@ type HitBoxer interface {
 	// ApplyPush применяет силу отталкивания (сдвиг)
 	ApplyPush(x, y float64)
 
-	// OnCollision вызывается при столкновении с другим объектом
-	OnCollision(other HitBoxer)
+	// GetWeight - возвращает вес объекта
+	// Чем больше вес, тем сложнее его сдвинуть
+	// Вес 1 — лёгкий, вес 10 — тяжёлый
+	GetWeight() float64
+
+	// GetDensity - возвращает плотность объекта
+	// 0.0 - полностью проницаемый (как призрак)
+	// 0.5 - частично проницаемый (можно войти с трудом)
+	// 1.0 - полностью твёрдый (как стена, нельзя войти)
+	GetDensity() float64
+
+	// HasAura - имеет ли объект ауру отталкивания
+	HasAura() bool
+
+	// AffectedByAura - реагирует ли объект на чужую ауру
+	AffectedByAura() bool
 }
 
 // ============================================================
@@ -76,8 +94,22 @@ func (cm *CollisionManager) Update() {
 			}
 
 			cm.checkCollision(obj1, obj2)
+
+			// ===== АУРА ОТТАЛКИВАНИЯ (только если есть аура) =====
+			if obj1.HasAura() || obj2.HasAura() {
+				pushX1, pushY1, pushX2, pushY2 := CalculateAuraPush(obj1, obj2)
+
+				if !obj1.IsStatic() && obj1.AffectedByAura() {
+					obj1.ApplyPush(pushX1, pushY1)
+				}
+				if !obj2.IsStatic() && obj2.AffectedByAura() {
+					obj2.ApplyPush(pushX2, pushY2)
+				}
+			}
+
 		}
 	}
+
 }
 
 // checkCollision - определяет тип коллизии и вызывает нужную проверку
@@ -152,27 +184,59 @@ func (cm *CollisionManager) checkAABBvsAABB(obj1, obj2 HitBoxer) {
 }
 
 // resolveCollision - обрабатывает столкновение между двумя объектами
+// В hitboxes/collision_manager.go
+
 func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit) {
+	if hit == nil {
+		return
+	}
+
 	normal := hit.Normal
 	penetration := hit.Data
 
-	// Вызываем OnCollision для обоих объектов
-	a.OnCollision(b)
-	b.OnCollision(a)
+	ABSender(a, b)
+	ABSender(b, a)
 
-	// Если оба статичны — ничего не делаем
 	if a.IsStatic() && b.IsStatic() {
 		return
 	}
 
-	// Отталкиваем объекты
-	pushFactor := 0.1 // ← 10% от глубины проникновения
+	// ===== НОВАЯ ЛОГИКА С УЧЁТОМ ВЕСА И ПЛОТНОСТИ =====
 
-	if !a.IsStatic() {
-		a.ApplyPush(-normal.X*penetration*pushFactor, -normal.Y*penetration*pushFactor)
+	weightA := a.GetWeight()
+	weightB := b.GetWeight()
+	densityA := a.GetDensity()
+	densityB := b.GetDensity()
+
+	// Общий вес для расчёта отталкивания
+	totalWeight := weightA + weightB
+
+	// Коэффициенты отталкивания (чем больше вес, тем меньше отталкивание)
+	pushFactorA := weightB / totalWeight
+	pushFactorB := weightA / totalWeight
+
+	// Коэффициент плотности (чем выше плотность, тем сильнее отталкивание)
+	densityFactor := (densityA + densityB) / 2
+
+	// Если плотность очень низкая (< 0.3) — почти не отталкиваем
+	if densityFactor < 0.3 {
+		return // объекты проходят друг через друга
 	}
+
+	// Базовая сила отталкивания
+	pushStrength := 0.3 * densityFactor
+
+	// Применяем отталкивание с учётом веса и плотности
+	if !a.IsStatic() {
+		pushX := -normal.X * penetration * pushStrength * pushFactorA
+		pushY := -normal.Y * penetration * pushStrength * pushFactorA
+		a.ApplyPush(pushX, pushY)
+	}
+
 	if !b.IsStatic() {
-		b.ApplyPush(normal.X*penetration*pushFactor, normal.Y*penetration*pushFactor)
+		pushX := normal.X * penetration * pushStrength * pushFactorB
+		pushY := normal.Y * penetration * pushStrength * pushFactorB
+		b.ApplyPush(pushX, pushY)
 	}
 }
 
