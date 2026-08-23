@@ -9,7 +9,6 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/setanarut/kamera/v2"
 )
 
 var _ game.Entity = (*PlayerLeg)(nil)
@@ -247,9 +246,6 @@ func (p *PlayerLeg) HasAura() bool {
 
 func (p *PlayerLeg) AffectedByAura() bool {
 	return false
-}
-
-func (p *PlayerLeg) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 }
 
 func (p *PlayerLeg) Tag() string {

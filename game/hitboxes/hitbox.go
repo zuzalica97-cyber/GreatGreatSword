@@ -113,30 +113,37 @@ func (cm *CollisionManager) Update() {
 }
 
 // checkCollision - определяет тип коллизии и вызывает нужную проверку
-func (cm *CollisionManager) checkCollision(obj1, obj2 HitBoxer) {
+func (cm *CollisionManager) checkCollision(obj1, obj2 any) {
 
 	//проверка евляютса ли они вращяюсемися
 	rot1, isRot1 := obj1.(RotatableHitBoxer)
 	rot2, isRot2 := obj2.(RotatableHitBoxer)
 
-	switch {
-	case isRot1 && isRot2:
-		// TODO: реализовать OBB vs OBB, если нужно
-		// cm.checkOBBvsOBB(rot1, rot2)
-	case isRot1:
-		cm.checkOBBvsAABB(rot1, obj2)
-	case isRot2:
-		cm.checkOBBvsAABB(rot2, obj1)
-	default:
-		cm.checkAABBvsAABB(obj1, obj2)
+	stat1, isHitbox1 := obj1.(HitBoxer)
+	stat2, isHitbox2 := obj2.(HitBoxer)
+
+	if isHitbox1 && isHitbox2 {
+
+		switch {
+		case isRot1 && isRot2:
+			// TODO: реализовать OBB vs OBB, если нужно
+			// cm.checkOBBvsOBB(rot1, rot2)
+		case isRot1:
+			cm.checkOBBvsAABB(rot1, stat2, obj1, obj2)
+		case isRot2:
+			cm.checkOBBvsAABB(rot2, stat1, obj1, obj2)
+		default:
+			cm.checkAABBvsAABB(stat1, stat2, obj1, obj2)
+		}
 	}
+
 }
 
 // checkOBBvsOBB - проверка столкновения двух вращающихся объектов
 // ТУТ ДОЛЖНО БЫТЬ ПРОВЕРКА ДВУХ ВРОЩЯЮЩИХСЯ ОБЬЕКТВОВ
 
 // checkOBBvsAABB - проверка столкновения вращающегося и статичного объекта
-func (cm *CollisionManager) checkOBBvsAABB(rot RotatableHitBoxer, stat HitBoxer) {
+func (cm *CollisionManager) checkOBBvsAABB(rot RotatableHitBoxer, stat HitBoxer, a, b any) {
 	cx, cy, hw, hh, angle := rot.GetOBB()
 
 	obb := &coll.OBB{
@@ -159,12 +166,12 @@ func (cm *CollisionManager) checkOBBvsAABB(rot RotatableHitBoxer, stat HitBoxer)
 		// Если столкновение есть, обрабатываем его
 		// Так как у нас нет hit-информации, создаём пустой хит или
 		// вызываем resolveCollision без hit-данных
-		cm.resolveCollision(rot, stat, hit)
+		cm.resolveCollision(rot, stat, hit, a, b)
 	}
 }
 
 // checkAABBvsAABB - проверка столкновения двух статичных объектов
-func (cm *CollisionManager) checkAABBvsAABB(obj1, obj2 HitBoxer) {
+func (cm *CollisionManager) checkAABBvsAABB(obj1, obj2 HitBoxer, a, b any) {
 	px1, py1, hw1, hh1 := obj1.GetAABB()
 	px2, py2, hw2, hh2 := obj2.GetAABB()
 
@@ -179,14 +186,14 @@ func (cm *CollisionManager) checkAABBvsAABB(obj1, obj2 HitBoxer) {
 
 	hit := &coll.Hit{}
 	if coll.BoxBoxOverlap(aabb1, aabb2, hit) {
-		cm.resolveCollision(obj1, obj2, hit)
+		cm.resolveCollision(obj1, obj2, hit, a, b)
 	}
 }
 
 // resolveCollision - обрабатывает столкновение между двумя объектами
 // В hitboxes/collision_manager.go
 
-func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit) {
+func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit, obj1, obj2 any) {
 	if hit == nil {
 		return
 	}
@@ -194,8 +201,8 @@ func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit) {
 	normal := hit.Normal
 	penetration := hit.Data
 
-	ABSender(a, b)
-	ABSender(b, a)
+	ABSender(obj1, obj2)
+	ABSender(obj2, obj1)
 
 	if a.IsStatic() && b.IsStatic() {
 		return

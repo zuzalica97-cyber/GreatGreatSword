@@ -13,9 +13,12 @@ import (
 
 type Entity interface {
 	Update(world WorldView, manager *hitboxes.CollisionManager) bool
-	Draw(screen *ebiten.Image, camera *kamera.Camera)
 	Tag() string
 	IsActive() bool
+}
+
+type Drawler interface {
+	Draw(screen *ebiten.Image, camera *kamera.Camera)
 }
 
 // ============================================================
@@ -24,13 +27,12 @@ type Entity interface {
 
 // Enemy - интерфейс для всех врагов
 type Enemy interface {
-	Entity
 	hitboxes.HitBoxer // для коллизий
 
 	// Базовые параметры
-	GetHealth() int
-	SetHealth(health int)
-	GetDamage() int
+	GetHealth() float64
+	SetHealth(health float64)
+	GetDamage() float64
 	GetPosition() (float64, float64)
 	SetPosition(x, y float64)
 	GetSpeed() float64
@@ -40,11 +42,11 @@ type Enemy interface {
 	GetDirection() (float64, float64)
 	SetDirection(x, y float64)
 	UpdateDirection(targetX, targetY float64)
-	GetTargetDirecton(targetX, targetY float64)
+	GetTargetDirecton() (targetX, targetY float64)
+	SetTargetDirecton(targetX, targetY float64)
 
 	// Действия
-	TakeDamage(damage int)   // получить урон
-	OnDeath(world WorldView) // что делать при смерти
+	TakeDamage(damage float64) // получить урон
 }
 
 // ============================================================

@@ -35,13 +35,12 @@ func NewDamageEffect(damage float64) *DamageEffect {
 
 // Apply - применяет урон к цели
 func (d *DamageEffect) Apply(target hitboxes.EffectUser) {
+	target.TakeDamage(d.damage)
 }
 
 // Update - обновляет эффект (всегда завершается за 1 кадр)
 // Возвращает true (эффект завершён)
 func (d *DamageEffect) Update(target hitboxes.EffectUser, dt float64) bool {
-	// Наносим урон при первом обновлении
-	target.TakeDamage(d.damage)
 	// Завершаем эффект
 	return true
 }

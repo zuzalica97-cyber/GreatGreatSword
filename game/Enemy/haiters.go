@@ -84,13 +84,6 @@ func (h *Haters) SpawnHiters(x, y float64, manager *hitboxes.CollisionManager) {
 // ============================================================
 
 func (e *Haits) OnCollision(other hitboxes.HitBoxer) {
-	otherID := other.GetHitBoxID()
-	switch otherID {
-	case "blueSword":
-		e.TakeDamage(float64(common.PlayerDamage))
-	case "playerLeg":
-		HatersCooldown(e)
-	}
 }
 
 // ============================================================

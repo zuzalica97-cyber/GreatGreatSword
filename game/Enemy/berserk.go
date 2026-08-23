@@ -4,9 +4,11 @@ import (
 	"great-sword/game"
 	enemyabilities "great-sword/game/abilities/enemyAbilities"
 	"great-sword/game/common"
+	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
 	"great-sword/game/player"
 	"image/color"
+	"reflect"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -65,6 +67,17 @@ func (b *Berseks) Spawn(x, y float64, manager *hitboxes.CollisionManager) {
 	enemy.Abilities = append(enemy.Abilities,
 		enemyabilities.NewDashAbility(800, 400, 2, 1),
 	)
+
+	enemy.Letters = []*hitboxes.Letter{
+		hitboxes.NewLetter(
+			true,
+			0.5,
+			[]hitboxes.Effect{
+				effectsmass.NewDamageEffect(float64(enemy.Damage)),
+			},
+			reflect.TypeOf((*game.PlayerLegInter)(nil)).Elem(),
+		),
+	}
 
 	b.BerserkMass = append(b.BerserkMass, enemy)
 	if manager != nil {
