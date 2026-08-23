@@ -1,7 +1,6 @@
 package player
 
 import (
-	"fmt"
 	"great-sword/game/common"
 	"great-sword/game/hitboxes"
 )
@@ -108,7 +107,6 @@ func (p *PlayerLeg) SetHealth(health float64) {
 
 func (p *PlayerLeg) OnCollision(effects []hitboxes.Effect) {
 	for _, effect := range effects {
-		fmt.Println(1)
 		p.AddEffect(effect)
 	}
 }
@@ -117,13 +115,10 @@ func (p *PlayerLeg) OnCollision(effects []hitboxes.Effect) {
 // РЕАЛИЗАЦИЯ ИНТЕРФЕЙСА LetterSender
 // ============================================================
 
-func (p *PlayerLeg) GetEffectsForTransfer() []hitboxes.Effect {
+func (p *PlayerLeg) GetEffectsForTransfer(object any) []hitboxes.Effect {
 	for _, letter := range p.Letters {
-		if !letter.CanDeliver() {
-			continue
-		}
 
-		letter.Deliver()
+		letter.Deliver(object)
 
 		var clones []hitboxes.Effect
 		// Возвращаем клоны эффектов для передачи
@@ -135,10 +130,13 @@ func (p *PlayerLeg) GetEffectsForTransfer() []hitboxes.Effect {
 	return nil
 }
 
-func (p *PlayerLeg) CanSendEffects() bool {
+func (p *PlayerLeg) CanSendEffects(object any) bool {
 	// Игрок может отправлять эффекты, если они есть
-	return len(p.Letters) > 0
-}
-
-func (p *PlayerLeg) OnEffectsSent() {
+	canSand := false
+	for _, letter := range p.Letters {
+		if letter.CanDeliver(object) && letter.WhiteListLetters(object) {
+			canSand = true
+		}
+	}
+	return len(p.Letters) > 0 && canSand
 }

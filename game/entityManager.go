@@ -97,8 +97,7 @@ func (em *EntityManager) processCollisions(world WorldView) {
 	for i := 0; i < len(em.enemies); i++ {
 		enemy := em.enemies[i]
 		if !enemy.IsActive() {
-			// Враг мёртв — вызываем OnDeath
-			enemy.OnDeath(world)
+			continue //ВРЕМЕННАЯ ЗАГЛУШКА
 		}
 	}
 }
@@ -110,7 +109,10 @@ func (em *EntityManager) processCollisions(world WorldView) {
 func (em *EntityManager) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	for _, entity := range em.entities {
 		if entity.IsActive() {
-			entity.Draw(screen, camera)
+			drawler, ok := entity.(Drawler)
+			if ok {
+				drawler.Draw(screen, camera)
+			}
 		}
 	}
 }

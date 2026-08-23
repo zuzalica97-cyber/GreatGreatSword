@@ -2,7 +2,7 @@ package hitboxes
 
 //Передача эффектов
 
-func ABSender(a HitBoxer, b HitBoxer) {
+func ABSender(a, b any) {
 	// Проверяем, может ли a отправить эффект
 	sender, ok := a.(LetterSender)
 	if !ok {
@@ -16,16 +16,15 @@ func ABSender(a HitBoxer, b HitBoxer) {
 		return
 	}
 
-	if !sender.CanSendEffects() {
+	if !sender.CanSendEffects(b) {
 		//log.Println("sender.CanSendEffects() == false")
 		return
 	}
 
-	effects := sender.GetEffectsForTransfer()
+	effects := sender.GetEffectsForTransfer(b)
 	if len(effects) == 0 {
 		return
 	}
 
 	receiver.OnCollision(effects)
-	sender.OnEffectsSent()
 }

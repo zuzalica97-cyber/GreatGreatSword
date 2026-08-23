@@ -7,14 +7,10 @@ package hitboxes
 type LetterSender interface {
 	// GetEffectsForTransfer - возвращает эффекты для передачи
 	// Если эффектов нет или кулдаун активен — возвращает nil
-	GetEffectsForTransfer() []Effect
+	GetEffectsForTransfer(object any) []Effect
 
 	// CanSendEffects - можно ли отправить эффекты сейчас
-	CanSendEffects() bool
-
-	// OnEffectsSent - вызывается после отправки эффектов
-	// (запускает кулдаун, обновляет счётчик)
-	OnEffectsSent()
+	CanSendEffects(object any) bool
 }
 
 // ============================================================

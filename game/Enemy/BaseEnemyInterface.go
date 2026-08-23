@@ -1,10 +1,13 @@
 package enemy
 
 import (
-	"fmt"
+	"great-sword/game"
 	movmentcommon "great-sword/game/Enemy/movmentCommon"
 	"great-sword/game/effects"
 	"great-sword/game/hitboxes"
+	"math/rand"
+	"reflect"
+	"strconv"
 
 	"image/color"
 	"math"
@@ -71,7 +74,7 @@ type BaseEnemy struct {
 	Effects             []hitboxes.Effect // список активных эффектов
 
 	// Письма (для системы писем)
-	letters []*hitboxes.Letter
+	Letters []*hitboxes.Letter
 }
 
 // ============================================================
@@ -79,7 +82,7 @@ type BaseEnemy struct {
 // ============================================================
 
 func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, maxSpeed float64, color color.RGBA, weight, density float64, tag string) *BaseEnemy {
-	return &BaseEnemy{
+	b := &BaseEnemy{
 		X:                   x,
 		Y:                   y,
 		Size:                size,
@@ -91,11 +94,19 @@ func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, max
 		Color:               color,
 		Weight:              weight,
 		Density:             density,
-		TagName:             tag,
 		CooldownDuration:    2.0,
 		HasAuraField:        true,
 		AffectedByAuraField: true,
 	}
+
+	numbers := rand.Intn(10000)
+
+	strings := strconv.Itoa(numbers)
+
+	b.TagName = tag + "_" + strings
+
+	return b
+
 }
 
 // ============================================================
@@ -179,6 +190,15 @@ func (b *BaseEnemy) SetTarget(x, y float64) {
 	b.TargetDistance = math.Sqrt(dx*dx + dy*dy)
 }
 
+func (b *BaseEnemy) GetTargetDirecton() (targetX, targetY float64) {
+	return b.TargetX, targetY
+}
+
+func (b *BaseEnemy) SetTargetDirecton(targetX, targetY float64) {
+	b.TargetX = targetX
+	b.TargetY = targetY
+}
+
 // ============================================================
 // МЕТОДЫ ДЛЯ РАБОТЫ С НАПРАВЛЕНИЕМ
 // ============================================================
@@ -238,18 +258,29 @@ func (b *BaseEnemy) OnCollision(effects []hitboxes.Effect) {
 // РЕАЛИЗАЦИЯ ИНТЕРФЕЙСА LetterSender (ОТПРАВКА ПИСЕМ)
 // ============================================================
 
-// GetEffectsForTransfer - возвращает эффекты для передачи
-func (b *BaseEnemy) GetEffectsForTransfer() []hitboxes.Effect {
-	var clones []hitboxes.Effect
-	for _, letter := range b.letters {
-		if !letter.CanDeliver() {
-			continue
-		}
+func IsPlayerLegInter(obj any) bool {
+	// Получаем тип объекта
+	objType := reflect.TypeOf(obj)
+	if objType == nil {
+		return false
+	}
 
-		letter.Deliver()
+	// Получаем тип интерфейса game.PlayerLegInter
+	interfaceType := reflect.TypeOf((*game.PlayerLegInter)(nil)).Elem()
+
+	// Проверяем, реализует ли obj этот интерфейс
+	return objType.Implements(interfaceType)
+}
+
+// GetEffectsForTransfer - возвращает эффекты для передачи
+func (b *BaseEnemy) GetEffectsForTransfer(object any) []hitboxes.Effect { //ДЗ у врага отправляется 0 количество эффектов хотя должен быть 1. нужно сделать кулдаун писем для каждого обьекта свой  (можно ударить одноврременно 10). нужно сделать whitelist для писем.
+	var clones []hitboxes.Effect
+	for _, letter := range b.Letters {
+
+		letter.Deliver(object)
 
 		// Возвращаем клоны эффектов для передачи
-		for _, effect := range b.Effects {
+		for _, effect := range letter.Effects {
 			clones = append(clones, effect.Clone())
 		}
 	}
@@ -257,8 +288,17 @@ func (b *BaseEnemy) GetEffectsForTransfer() []hitboxes.Effect {
 }
 
 // CanSendEffects - можно ли отправить эффекты сейчас
-func (b *BaseEnemy) CanSendEffects() bool {
-	return len(b.letters) > 0
+func (b *BaseEnemy) CanSendEffects(object any) bool {
+	if b.Letters == nil {
+		return false
+	}
+	canSand := false
+	for _, letter := range b.Letters {
+		if letter.CanDeliver(object) && letter.WhiteListLetters(object) {
+			canSand = true
+		}
+	}
+	return canSand
 }
 
 // OnEffectsSent - вызывается после отправки эффектов
@@ -278,8 +318,6 @@ func (b *BaseEnemy) AddEffect(effect hitboxes.Effect) { //Нужно реали�
 			// Суммируем время
 			e.SetDuration(e.GetDuration() + effect.GetDuration()*0.5)
 			e.SetTimer(e.GetDuration() * 0.5)
-			fmt.Printf("Суммируем эффект: %s, новое время: %.1f\n",
-				effect.GetType(), e.GetDuration())
 			return
 		}
 	}
@@ -361,6 +399,10 @@ func (b *BaseEnemy) TakeDamage(damage float64) {
 	}
 }
 
+func (b *BaseEnemy) GetDamage() float64 {
+	return float64(b.Damage)
+}
+
 func (b *BaseEnemy) IsActive() bool {
 	return b.Active
 }
@@ -402,7 +444,8 @@ func (b *BaseEnemy) GetAABB() (posX, posY, halfW, halfH float64) {
 }
 
 func (b *BaseEnemy) GetHitBoxID() string {
-	return b.TagName + "_" + string(rune(b.Index))
+
+	return b.TagName
 }
 
 func (b *BaseEnemy) IsStatic() bool {

@@ -30,23 +30,6 @@ func NewBurnEffect(duration, damagePerSecond float64, maxTransfers int) *BurnEff
 	}
 }
 
-func (b *BurnEffect) Clone() hitboxes.Effect {
-	return &BurnEffect{
-		BaseEffect: BaseEffect{
-			id:                 b.id + "_copy", // новый ID
-			effectType:         b.effectType,
-			active:             true,
-			duration:           b.duration, // ← оригинальная длительность!
-			timer:              b.duration, // ← СБРАСЫВАЕМ ТАЙМЕР!
-			maxTransfers:       b.maxTransfers,
-			remainingTransfers: b.remainingTransfers,
-			canStack:           b.canStack,
-			canExtend:          b.canExtend,
-		},
-		damagePerSecond: b.damagePerSecond,
-	}
-}
-
 func (b *BurnEffect) Apply(target hitboxes.EffectUser) {
 	target.SetSpeed(target.GetSpeed() * 0.8)
 }
@@ -90,4 +73,21 @@ func (b *BurnEffect) Draw(screen *ebiten.Image, camera *kamera.Camera, target hi
 		true,
 	)
 
+}
+
+func (b *BurnEffect) Clone() hitboxes.Effect {
+	return &BurnEffect{
+		BaseEffect: BaseEffect{
+			id:                 b.id + "_copy", // новый ID
+			effectType:         b.effectType,
+			active:             true,
+			duration:           b.duration, // ← оригинальная длительность!
+			timer:              b.duration, // ← СБРАСЫВАЕМ ТАЙМЕР!
+			maxTransfers:       b.maxTransfers,
+			remainingTransfers: b.remainingTransfers,
+			canStack:           b.canStack,
+			canExtend:          b.canExtend,
+		},
+		damagePerSecond: b.damagePerSecond,
+	}
 }

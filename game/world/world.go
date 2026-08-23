@@ -18,6 +18,19 @@ func (w *World) AddEntity(e game.Entity) {
 	w.entities = append(w.entities, e)
 }
 
+func (w *World) DrawlerEntities() []game.Drawler {
+	var drawlerEntities []game.Drawler
+	for _, entity := range w.entities {
+		if entity.IsActive() {
+			drawler, ok := entity.(game.Drawler)
+			if ok {
+				drawlerEntities = append(drawlerEntities, drawler)
+			}
+		}
+	}
+	return drawlerEntities
+}
+
 func (w World) Entities() []game.Entity {
 	return w.entities
 }

@@ -3,8 +3,6 @@ package enemy
 import (
 	"great-sword/game"
 	"great-sword/game/common"
-	"great-sword/game/player"
-	swords "great-sword/game/player/Swords"
 	"math"
 	"math/rand/v2"
 )
@@ -41,29 +39,6 @@ func RangomSpawnInWall(size int) (float64, float64) {
 		y = float64(common.RoomHeight)
 	}
 	return x, y
-}
-
-func WhereThePlayer(world game.WorldView) (float64, float64, float64, float64, float64, float64, float64) {
-
-	var playerX, playerY, attahmentX, attahmentY, attahmentW, attahmentH, attahmentAngle float64
-
-	for _, entity := range world.SearchEntities("playerLeg") {
-		pLeg := entity.(*player.PlayerLeg)
-
-		playerX = pLeg.Position.Px + common.PlayerSize/2
-		playerY = pLeg.Position.Py + common.PlayerSize/2
-
-		for _, entity := range world.SearchEntities("blueSword") {
-			sword := entity.(*swords.BlueSword)
-
-			attahmentX = sword.Position.Px
-			attahmentY = sword.Position.Py
-			attahmentW = common.SwordAttachmentWidth
-			attahmentH = common.SwordAttachmentHeight
-			attahmentAngle = sword.Angle * math.Pi / 180
-		}
-	}
-	return playerX, playerY, attahmentX, attahmentY, attahmentW, attahmentH, attahmentAngle
 }
 
 // MoveEnemyTowardsPlayer - передвигает врага в сторону игрока

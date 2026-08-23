@@ -176,7 +176,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		screen.Fill(color.RGBA{30, 30, 30, 255})
 	}
 
-	for _, entity := range g.world.Entities() {
+	for _, entity := range g.world.DrawlerEntities() {
 		entity.Draw(screen, &g.MainKamera)
 	}
 
