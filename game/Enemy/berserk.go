@@ -94,7 +94,7 @@ func (b *Berseks) Update(worldView game.WorldView, manager *hitboxes.CollisionMa
 
 	playerX, playerY := getPlayerPosition(worldView)
 
-	if len(b.BerserkMass) < 1 {
+	if len(b.BerserkMass) < 0 {
 		x, y := RangomSpawnInWall(50)
 		b.Spawn(x, y, manager)
 	}

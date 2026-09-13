@@ -5,6 +5,7 @@ import (
 	movmentcommon "great-sword/game/Enemy/movmentCommon"
 	"great-sword/game/effects"
 	"great-sword/game/hitboxes"
+	"great-sword/game/weapons"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"math"
 )
 
+var _ weapons.WeaponUser = (*BaseEnemy)(nil)
 var _ hitboxes.EffectUser = (*BaseEnemy)(nil)
 var _ hitboxes.HitBoxer = (*BaseEnemy)(nil)
 var _ hitboxes.LetterReceiver = (*BaseEnemy)(nil)
@@ -73,8 +75,12 @@ type BaseEnemy struct {
 	EffectsManagerEnemy *effects.EffectManager
 	Effects             []hitboxes.Effect // список активных эффектов
 
+	Rotation *RotationComponent
+
 	// Письма (для системы писем)
 	Letters []*hitboxes.Letter
+
+	weapon weapons.Weapon
 }
 
 // ============================================================
@@ -97,6 +103,7 @@ func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, max
 		CooldownDuration:    2.0,
 		HasAuraField:        true,
 		AffectedByAuraField: true,
+		Rotation:            NewRotationComponent(),
 	}
 
 	numbers := rand.Intn(10000)
@@ -544,3 +551,42 @@ func (b *BaseEnemy) EnemySlideMovmentFunc(friction, acceleration, dt float64) (f
 	)
 	return newSpeed, newDirX, newDirY
 }
+
+// RemoveWeaponFromCollision - удаляет оружие врага из менеджера коллизий
+func (b *BaseEnemy) RemoveWeaponFromCollision(manager *hitboxes.CollisionManager) {
+	if b.weapon != nil && manager != nil {
+		manager.RemoveObject(b.weapon)
+	}
+}
+
+// ============================================================
+// РЕАЛИЗАЦИЯ game.WeaponUser ДЛЯ BaseEnemy
+// ============================================================
+
+func (b *BaseEnemy) GetWeapon() weapons.Weapon {
+	return b.weapon
+}
+
+func (b *BaseEnemy) SetWeapon(weapon weapons.Weapon) {
+	b.weapon = weapon
+	if weapon != nil {
+		weapon.Attach(b)
+	}
+}
+
+func (b *BaseEnemy) GetAngle() float64 {
+	if b.Rotation != nil {
+		return b.Rotation.GetAngle()
+	}
+	return 0
+}
+
+func (b *BaseEnemy) SetAngle(angle float64) {
+	if b.Rotation != nil {
+		b.Rotation.SetAngle(angle)
+	}
+}
+
+// ============================================================
+// ОТРИСОВКА ВРАГА (вместе с эффектами)
+// ============================================================

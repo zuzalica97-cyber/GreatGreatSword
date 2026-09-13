@@ -53,6 +53,17 @@ type HitBoxer interface {
 type RotatableHitBoxer interface {
 	HitBoxer
 	GetOBB() (centerX, centerY, halfW, halfH, angle float64) // центр, половинные размеры, угол
+	GetAngle() float64
+	SetAngle(angle float64)
+	GetTargetAngle() float64
+	GetWeaponUser() WeaponUser
+
+	Debag(x, y float64)
+}
+
+type WeaponUser interface {
+	GetAngle() float64
+	SetAngle(angle float64)
 }
 
 // CollisionManager - управляет коллизиями между всеми HitBoxer
@@ -126,8 +137,8 @@ func (cm *CollisionManager) checkCollision(obj1, obj2 any) {
 
 		switch {
 		case isRot1 && isRot2:
-			// TODO: реализовать OBB vs OBB, если нужно
-			// cm.checkOBBvsOBB(rot1, rot2)
+
+			cm.checkOBBvsOBB(rot1, rot2)
 		case isRot1:
 			cm.checkOBBvsAABB(rot1, stat2, obj1, obj2)
 		case isRot2:
@@ -163,6 +174,7 @@ func (cm *CollisionManager) checkOBBvsAABB(rot RotatableHitBoxer, stat HitBoxer,
 	// 3. Используем готовую функцию из библиотеки coll
 	// Она вернёт true, если AABB и OBB пересекаются
 	if coll.BoxOrientedBoxOverlap(aabb, obb) {
+
 		// Если столкновение есть, обрабатываем его
 		// Так как у нас нет hit-информации, создаём пустой хит или
 		// вызываем resolveCollision без hit-данных

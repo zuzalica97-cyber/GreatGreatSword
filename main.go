@@ -201,6 +201,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	helthOp.GeoM.Scale(3.0, 3.0)
 	helthOp.GeoM.Translate(common.ScreenWidth-250, 70)
 	screen.DrawImage(helthIng, helthOp)
+
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -215,15 +216,14 @@ func main() {
 
 	manager := hitboxes.NewCollisionManager()
 
-	world.AddEntity(
-		player.NewPlayerLeg(manager),
-	)
-	world.AddEntity(
-		player.NewPlayerHead(),
-	)
-	world.AddEntity(
-		swords.NewBlueSword(world, manager),
-	)
+	// 1. Сначала создаём голову
+	head := player.NewPlayerHead()
+	world.AddEntity(head)
+
+	// 2. Создаём ноги и передаём ссылку на голову
+	leg := player.NewPlayerLeg(manager, head) // ← передаём голову
+	world.AddEntity(leg)
+
 	world.AddEntity(
 		enemy.NewPathetic(),
 	)

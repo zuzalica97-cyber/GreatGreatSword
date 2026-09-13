@@ -5,11 +5,15 @@ import (
 	playerabilities "great-sword/game/abilities/playerAbilities"
 	"great-sword/game/common"
 	"great-sword/game/hitboxes"
+	"great-sword/game/weapons"
 	gameL "great-sword/game/world"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/setanarut/kamera/v2"
 )
+
+var _ weapons.WeaponUser = (*PlayerLeg)(nil)
 
 var _ game.Entity = (*PlayerLeg)(nil)
 var _ game.PlayerLegInter = (*PlayerLeg)(nil)
@@ -19,7 +23,10 @@ var _ hitboxes.EffectUser = (*PlayerLeg)(nil)
 var _ hitboxes.LetterReceiver = (*PlayerLeg)(nil)
 var _ hitboxes.LetterSender = (*PlayerLeg)(nil)
 
+var _ game.Drawler = (*PlayerLeg)(nil)
+
 type PlayerLeg struct {
+	Head             *PlayerHead
 	Position         common.PointPlayer
 	Speed            common.PointSpeed
 	Texture          *ebiten.Image
@@ -31,16 +38,19 @@ type PlayerLeg struct {
 	MoveY            float64
 	Weight           float64
 	Density          float64
+	Size             float64
 
 	AbilityLegManager *gameL.PlayerWorld
 
 	Effects []hitboxes.Effect  // список активных эффектов
 	Letters []*hitboxes.Letter // письма для отправки
+	Weapon  weapons.Weapon
 }
 
-func NewPlayerLeg(manager *hitboxes.CollisionManager) *PlayerLeg {
+func NewPlayerLeg(manager *hitboxes.CollisionManager, head *PlayerHead) *PlayerLeg {
 
 	p := &PlayerLeg{
+		Head: head,
 		Position: common.PointPlayer{
 			Px: common.RoomWidth/2 - common.PlayerSize/2,
 			Py: common.RoomHeight/2 - common.PlayerSize/2,
@@ -50,12 +60,15 @@ func NewPlayerLeg(manager *hitboxes.CollisionManager) *PlayerLeg {
 			Vy: 0,
 		},
 		Weight:            4,
-		Density:           2.0,
+		Density:           3.0,
 		AbilityLegManager: gameL.NewPlayerWorld(),
+		Size:              common.PlayerSize,
 	}
 	p.AbilityLegManager.AddAbility(
 		playerabilities.NewDash(),
 	)
+
+	p.SetWeapon(weapons.NewBlueSwordWeapon(manager, p))
 
 	if manager != nil {
 		manager.AddObject(p)
@@ -73,6 +86,9 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 	dt := 1.0 / 60.0
 
 	common.SwordExist = SwordIxist
+	if p.Weapon != nil {
+		p.Weapon.Update(worldView, manager)
+	}
 
 	if common.PlayerHelth >= common.MaxPlayerHelth {
 		common.PlayerHelth = common.MaxPlayerHelth
@@ -191,20 +207,26 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 		p.Position.Px = 0
 		p.Speed.Vx = -p.Speed.Vx * p.Rebound //отскок с потерей скорости
 	}
-	if p.Position.Px > common.RoomWidth-common.PlayerSize {
-		p.Position.Px = common.RoomHeight - common.PlayerSize
+	if p.Position.Px > common.RoomWidth-p.Size {
+		p.Position.Px = common.RoomHeight - p.Size
 		p.Speed.Vx = -p.Speed.Vx * p.Rebound //отскок с потерей скорости
 	}
 	if p.Position.Py < 0 {
 		p.Position.Py = 0
 		p.Speed.Vy = -p.Speed.Vy * p.Rebound //отскок с потерей скорости
 	}
-	if p.Position.Py > common.RoomHeight-common.PlayerSize {
-		p.Position.Py = common.RoomHeight - common.PlayerSize
+	if p.Position.Py > common.RoomHeight-p.Size {
+		p.Position.Py = common.RoomHeight - p.Size
 		p.Speed.Vy = -p.Speed.Vy * p.Rebound //отскок с потерей скорости
 	}
 
 	return false
+}
+
+func (p *PlayerLeg) Draw(screen *ebiten.Image, camera *kamera.Camera) { //ДЗ сделай чтобы игрок нармально держал мечь и сделай физику столкнавения мечей.
+	if p.Weapon != nil {
+		p.Weapon.Draw(screen, camera)
+	}
 }
 
 func (p *PlayerLeg) GetAABB() (posX, posY, halfW, halfH float64) {
@@ -254,4 +276,37 @@ func (p *PlayerLeg) Tag() string {
 
 func (p *PlayerLeg) IsActive() bool {
 	return true
+}
+
+// ============================================================
+// РЕАЛИЗАЦИЯ game.WeaponUser ДЛЯ PlayerLeg
+// ============================================================
+
+// GetWeapon - возвращает оружие игрока
+func (p *PlayerLeg) GetWeapon() weapons.Weapon {
+	return p.Weapon
+}
+
+// SetWeapon - устанавливает оружие игроку
+func (p *PlayerLeg) SetWeapon(weapon weapons.Weapon) {
+	p.Weapon = weapon
+	if weapon != nil {
+		weapon.Attach(p)
+	}
+}
+
+// GetAngle - возвращает угол поворота головы (у игрока это Head.Angle)
+func (p *PlayerLeg) GetAngle() float64 {
+
+	if p.Head != nil {
+		return p.Head.Angle
+	}
+	return 0
+}
+
+// SetAngle - устанавливает угол поворота
+func (p *PlayerLeg) SetAngle(angle float64) {
+	if p.Head != nil {
+		p.Head.Angle = angle
+	}
 }

@@ -5,14 +5,12 @@ import (
 	"great-sword/game"
 	enemyabilities "great-sword/game/abilities/enemyAbilities"
 	"great-sword/game/common"
-	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
 	"great-sword/game/player"
+	"great-sword/game/weapons"
 	"image/color"
-	"reflect"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/setanarut/kamera/v2"
 )
 
@@ -62,7 +60,7 @@ func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManage
 		BaseEnemy: NewBaseEnemy(
 			x, y,
 			65,  // size
-			50,  // helth
+			500, // helth
 			5,   // damage
 			100, // speed
 			300, // maxSpeed
@@ -78,16 +76,8 @@ func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManage
 		enemyabilities.NewChaseAbility(enemy.Speed, enemy.MaxSpeed, 600, 0.01),
 		enemyabilities.NewDashAbility(250, 450, 2, 0.5),
 	}
-	enemy.Letters = []*hitboxes.Letter{
-		hitboxes.NewLetter(
-			true,
-			0.5,
-			[]hitboxes.Effect{
-				effectsmass.NewDamageEffect(float64(enemy.Damage)),
-			},
-			reflect.TypeOf((*game.PlayerLegInter)(nil)).Elem(),
-		),
-	}
+
+	enemy.SetWeapon(weapons.NewlitleKnife(manager, enemy))
 
 	p.Paths = append(p.Paths, enemy)
 	if manager != nil {
@@ -110,7 +100,7 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 
 	playerX, playerY := getPlayerPosition(worldView) //ДЗ делать мечи у партивников. и делать их крутищихся
 
-	if len(p.Paths) < 10 {
+	if len(p.Paths) < 1 {
 		x, y := RangomSpawnInWall(50)
 		p.SpawnPathetic(x, y, manager)
 	}
@@ -122,6 +112,7 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 		if !enemy.IsActive() || enemy.GetHealth() <= 0 {
 			if manager != nil {
 				manager.RemoveObject(enemy)
+				enemy.RemoveWeaponFromCollision(manager)
 			}
 			p.Paths[i] = nil
 			p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
@@ -129,6 +120,15 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 			common.Score++
 			player.ActivateBoost()
 			continue
+		}
+
+		// ===== ВРАЩЕНИЕ ВПРАВО =====
+		// Вращаемся вправо (1 = вправо, -1 = влево)
+		enemy.Rotation.UpdateRotation(1.0, dt)
+
+		// Обновляем оружие (если есть)
+		if enemy.weapon != nil {
+			enemy.weapon.Update(worldView, manager)
 		}
 
 		// === ОБНОВЛЕНИЕ КУЛДАУНА ===
@@ -178,35 +178,34 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 	return false
 }
 
-// ============================================================
-// ОТРИСОВКА
-// ============================================================
+func (b *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+	for _, b := range b.Paths {
+		// Центр игрока в мировых координатах
+		centerX := b.X + float64(b.Size)/2
+		centerY := b.Y + float64(b.Size)/2
 
-func (p *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
-	for _, enemy := range p.Paths {
+		// Экранные координаты с учётом камеры
+		screenX := centerX - camera.X
+		screenY := centerY - camera.Y
 
-		screenX := enemy.X - camera.X
-		screenY := enemy.Y - camera.Y
-
-		Color := enemy.Color
-		if enemy.CooldownActive {
-			Color = color.RGBA{120, 120, 120, 255}
-		}
-
-		vector.FillRect(
+		// 1. Рисуем повёрнутый квадрат
+		DrawRotatedRect(
 			screen,
-			float32(screenX),
-			float32(screenY),
-			float32(enemy.Size),
-			float32(enemy.Size),
-			Color,
-			true,
+			screenX,
+			screenY,
+			float64(b.Size),
+			float64(b.Size),
+			b.Rotation.Angle, // ← угол поворота
+			b.Color,
 		)
 
-		for _, effect := range enemy.Effects {
-			effect.Draw(screen, camera, enemy)
+		for _, effect := range b.Effects {
+			effect.Draw(screen, camera, b)
 		}
 
+		if b.weapon != nil {
+			b.weapon.Draw(screen, camera)
+		}
 	}
 }
 

@@ -40,6 +40,7 @@ type PlayerHead struct {
 
 func NewPlayerHead() *PlayerHead {
 	p := &PlayerHead{
+
 		Angle:              0.0,
 		AngularVelocity:    0.0,
 		AbilityHeadManager: gameH.NewPlayerWorld(),

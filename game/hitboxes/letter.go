@@ -1,7 +1,6 @@
 package hitboxes
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -68,7 +67,6 @@ func (l *Letter) CanDeliver(target any) bool {
 		if deliversTarget.Target == hitbox.GetHitBoxID() {
 			return false
 		}
-		fmt.Println(deliversTarget.Target, hitbox.GetHitBoxID())
 	}
 	// Проверяем кулдаун (таймер должен быть <= 0)
 	return true
