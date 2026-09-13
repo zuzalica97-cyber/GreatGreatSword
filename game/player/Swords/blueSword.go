@@ -301,7 +301,7 @@ func (b *BlueSword) GetEffectsForTransfer(object any) []hitboxes.Effect {
 
 		letter.Deliver(object)
 
-		if !letter.WhiteListLetters(object) {
+		if !letter.WhiteListLetters(object) && !letter.CanDeliver(object) {
 			continue
 		}
 

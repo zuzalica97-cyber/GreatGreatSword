@@ -46,6 +46,7 @@ func (p *PlayerLeg) SetAxelDexel(Axel, Dexel float64) {
 
 // ---- ПОЗИЦИЯ ----
 func (p *PlayerLeg) GetPosition() (float64, float64) {
+
 	return p.Position.Px, p.Position.Py
 }
 
