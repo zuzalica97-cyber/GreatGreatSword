@@ -106,6 +106,14 @@ func (p *PlayerLeg) SetHealth(health float64) {
 // ============================================================
 
 func (p *PlayerLeg) OnCollision(effects []hitboxes.Effect) {
+	for _, i := range p.AbilityLegManager.Abilities {
+		if !i.IsActive() {
+			continue
+		}
+		if i.Name() == "Dash" {
+			return
+		}
+	}
 	for _, effect := range effects {
 		p.AddEffect(effect)
 	}

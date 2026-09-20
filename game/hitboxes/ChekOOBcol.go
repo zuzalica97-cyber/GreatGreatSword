@@ -137,72 +137,101 @@ func (cm *CollisionManager) resolveOBBvsOBB(rot1, rot2 RotatableHitBoxer, hit *c
 //   - normal: нормаль столкновения
 //   - penetration: глубина проникновения
 //   - dt: дельта времени
+
 func resolveAngleCollision(weapon1, weapon2 RotatableHitBoxer, normal v.Vec, penetration float64, dt float64) {
 	if weapon1 == nil || weapon2 == nil {
 		return
 	}
 
-	weight1 := weapon1.GetWeight()
-	weight2 := weapon2.GetWeight()
+	user1 := weapon1.GetWeaponUser()
+	user2 := weapon2.GetWeaponUser()
+	if user1 == nil || user2 == nil {
+		return
+	}
 
-	// ===== 1. НАПРАВЛЕНИЕ ТОЛЧКА =====
-	anglePush1 := math.Atan2(-normal.Y, -normal.X) * 180 / math.Pi //ДЗ сделай силу вращения и чтобы мечь мог отталкивать врагов а не просто проходить с квозь.
+	// ===== 1. СРАВНИВАЕМ СИЛЫ ВРАЩЕНИЯ =====
+	force1 := user1.GetRotationForce()
+	force2 := user2.GetRotationForce()
+
+	// Разница сил (кто доминирует)
+	forceDiff := force1 - force2
+
+	// ===== 2. НАПРАВЛЕНИЕ ТОЛЧКА =====
+	anglePush1 := math.Atan2(-normal.Y, -normal.X) * 180 / math.Pi
 	anglePush2 := math.Atan2(normal.Y, normal.X) * 180 / math.Pi
 
-	// ===== 2. СИЛА ТОЛЧКА =====
-	pushForce := 5.0 * penetration
+	// ===== 3. СИЛА ТОЛЧКА =====
+	pushForce := 3 * penetration
 
-	// ===== 3. МАКСИМАЛЬНАЯ СКОРОСТЬ ИЗМЕНЕНИЯ УГЛА =====
-	// Максимальное изменение угла за кадр (градусов/сек)
-	maxAngularSpeed := 720.0 // 180 градусов в секунду
-	maxAngleChange := maxAngularSpeed * dt
+	// ===== 4. ПРИМЕНЯЕМ ТОЛЧОК К УГЛУ ПОЛЬЗОВАТЕЛЯ =====
+	// Доминирующий получает меньше, слабый — больше
+	if forceDiff > 0 {
+		// Первый доминирует
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.3) // ← слабый толчок
+		user2.ApplyAngularPush(anglePush2 * pushForce * 1.5) // ← сильный толчок
+	} else if forceDiff < 0 {
+		// Второй доминирует
+		user1.ApplyAngularPush(anglePush1 * pushForce * 1.5)
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.3)
+	} else {
+		// Равные силы — оба получают одинаковый толчок
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.8)
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.8)
+	}
+}
 
-	// ===== 4. ТОЛКАЕМ ПОЛЬЗОВАТЕЛЯ ПЕРВОГО ОРУЖИЯ =====
-	user1 := weapon1.GetWeaponUser()
-	if user1 != nil {
-		force1 := pushForce * (weight1 / (weight1 + 1))
-		currentUserAngle := user1.GetAngle()
+// SAT_OBBvsAABB - SAT для OBB vs AABB
+func SAT_OBBvsAABB(
+	cx, cy, hw, hh, angle float64,
+	px, py, hw2, hh2 float64,
+) (bool, v.Vec, float64) {
 
-		// Желаемое изменение угла
-		desiredChange := anglePush1 * force1
+	rad := angle * math.Pi / 180
 
-		// ===== ОГРАНИЧЕНИЕ СКОРОСТИ =====
-		if desiredChange > maxAngleChange {
-			desiredChange = maxAngleChange
-		} else if desiredChange < -maxAngleChange {
-			desiredChange = -maxAngleChange
+	// Оси OBB
+	axisOBB_X := v.Vec{X: math.Cos(rad), Y: math.Sin(rad)}
+	axisOBB_Y := v.Vec{X: -math.Sin(rad), Y: math.Cos(rad)}
+
+	// Оси AABB
+	axisAABB_X := v.Vec{X: 1, Y: 0}
+	axisAABB_Y := v.Vec{X: 0, Y: 1}
+
+	axes := []v.Vec{axisOBB_X, axisOBB_Y, axisAABB_X, axisAABB_Y}
+
+	dx := px - cx
+	dy := py - cy
+
+	minOverlap := math.MaxFloat64
+	var minAxis v.Vec
+
+	for _, axis := range axes {
+		// Проекция расстояния
+		distProj := math.Abs(dx*axis.X + dy*axis.Y)
+
+		// Проекция OBB
+		projOBB := hw*math.Abs(axis.X*math.Cos(rad)+axis.Y*math.Sin(rad)) +
+			hh*math.Abs(-axis.X*math.Sin(rad)+axis.Y*math.Cos(rad))
+
+		// Проекция AABB
+		projAABB := hw2*math.Abs(axis.X) + hh2*math.Abs(axis.Y)
+
+		overlap := projOBB + projAABB - distProj
+
+		if overlap < 0 {
+			return false, v.Vec{}, 0
 		}
 
-		newUserAngle := currentUserAngle + desiredChange
-		newUserAngle = math.Mod(newUserAngle, 360)
-		if newUserAngle < 0 {
-			newUserAngle += 360
+		if overlap < minOverlap {
+			minOverlap = overlap
+			minAxis = axis
 		}
-
-		user1.SetAngle(newUserAngle)
 	}
 
-	// ===== 5. ТОЛКАЕМ ПОЛЬЗОВАТЕЛЯ ВТОРОГО ОРУЖИЯ =====
-	user2 := weapon2.GetWeaponUser()
-	if user2 != nil {
-		force2 := pushForce * (weight2 / (weight2 + 1))
-		currentUserAngle := user2.GetAngle()
-
-		desiredChange := anglePush2 * force2
-
-		// ===== ОГРАНИЧЕНИЕ СКОРОСТИ =====
-		if desiredChange > maxAngleChange {
-			desiredChange = maxAngleChange
-		} else if desiredChange < -maxAngleChange {
-			desiredChange = -maxAngleChange
-		}
-
-		newUserAngle := currentUserAngle + desiredChange
-		newUserAngle = math.Mod(newUserAngle, 360)
-		if newUserAngle < 0 {
-			newUserAngle += 360
-		}
-
-		user2.SetAngle(newUserAngle)
+	// Нормаль — от OBB к AABB
+	if dx*minAxis.X+dy*minAxis.Y < 0 {
+		minAxis.X = -minAxis.X
+		minAxis.Y = -minAxis.Y
 	}
+
+	return true, minAxis, minOverlap
 }

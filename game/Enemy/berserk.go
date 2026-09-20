@@ -4,14 +4,11 @@ import (
 	"great-sword/game"
 	enemyabilities "great-sword/game/abilities/enemyAbilities"
 	"great-sword/game/common"
-	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
-	"great-sword/game/player"
+	"great-sword/game/weapons"
 	"image/color"
-	"reflect"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/setanarut/kamera/v2"
 )
 
@@ -52,14 +49,20 @@ func (b *Berseks) Spawn(x, y float64, manager *hitboxes.CollisionManager) {
 		BaseEnemy: NewBaseEnemy(
 			x, y,
 			150,                         // size
-			200,                         // health
+			450,                         // health
 			10,                          // damage
 			200,                         // baseSpeed
 			400,                         // maxSpeed
+			0.9999,                      // чем ближе к 1, тем дольше скользит
+			50.0,                        // как быстро разгоняется
 			color.RGBA{90, 90, 90, 255}, //ДЗ нужно поравить силу ооталкивания чтобы тяжёлые обьекты легко отталкивали лёгкие а то аура мешает
 			50,
 			1,
 			"berserk",
+			120.0, // 360 градусов в секунду
+			500.0, // ускорение
+			700.0, // замедление
+			0.3,   // плавность
 		),
 		oldSpeed: 0,
 	}
@@ -68,16 +71,7 @@ func (b *Berseks) Spawn(x, y float64, manager *hitboxes.CollisionManager) {
 		enemyabilities.NewDashAbility(800, 400, 2, 1),
 	)
 
-	enemy.Letters = []*hitboxes.Letter{
-		hitboxes.NewLetter(
-			true,
-			0.5,
-			[]hitboxes.Effect{
-				effectsmass.NewDamageEffect(float64(enemy.Damage)),
-			},
-			reflect.TypeOf((*game.PlayerLegInter)(nil)).Elem(),
-		),
-	}
+	enemy.SetWeapon(weapons.NewBigSword(manager, enemy))
 
 	b.BerserkMass = append(b.BerserkMass, enemy)
 	if manager != nil {
@@ -94,7 +88,7 @@ func (b *Berseks) Update(worldView game.WorldView, manager *hitboxes.CollisionMa
 
 	playerX, playerY := getPlayerPosition(worldView)
 
-	if len(b.BerserkMass) < 0 {
+	if len(b.BerserkMass) < 1 {
 		x, y := RangomSpawnInWall(50)
 		b.Spawn(x, y, manager)
 	}
@@ -102,21 +96,16 @@ func (b *Berseks) Update(worldView game.WorldView, manager *hitboxes.CollisionMa
 	for i := 0; i < len(b.BerserkMass); i++ {
 		enemy := b.BerserkMass[i]
 
-		// === ПРОВЕРКА СМЕРТИ ===
-		if !enemy.IsActive() || enemy.GetHealth() <= 0 {
-			if manager != nil {
-				manager.RemoveObject(enemy)
-			}
-			b.BerserkMass[i] = nil
-			b.BerserkMass = append(b.BerserkMass[:i], b.BerserkMass[i+1:]...)
-			i--
-			common.Score++
-			player.ActivateBoost()
+		// Проверка смерти
+		var died bool
+		b.BerserkMass, died = DeathScan(manager, enemy.BaseEnemy, b.BerserkMass, i)
+		if died {
+			i-- // корректируем индекс после удаления
 			continue
 		}
 
 		// === ОБНОВЛЕНИЕ КУЛДАУНА ===
-		enemy.UpdateCooldown(dt)
+		enemy.StUpdateCoolDown(dt, worldView, manager)
 
 		// === УСТАНОВКА ЦЕЛИ ===
 		enemy.SetTarget(playerX, playerY)
@@ -132,18 +121,7 @@ func (b *Berseks) Update(worldView game.WorldView, manager *hitboxes.CollisionMa
 		// === ОБНОВЛЕНИЕ ЭФФЕКТОВ ===
 		enemy.UpdateEffects(dt)
 
-		friction := 0.9999   // чем ближе к 1, тем дольше скользит
-		acceleration := 50.0 // как быстро разгоняется
-
-		newSpeed, newDirX, newDirY := enemy.EnemySlideMovmentFunc(friction, acceleration, dt)
-
-		enemy.CurrentSpeed = newSpeed
-		enemy.SetDirection(newDirX, newDirY)
-
-		// === ДВИЖЕНИЕ ===
-		newX, newY := MoveEnemyToTareget(enemy.BaseEnemy, dt)
-
-		enemy.SetPosition(newX, newY)
+		enemy.StMovment(dt)
 
 		// === КУЛДАУН (ОТТАЛКИВАНИЕ) ===
 		if enemy.CooldownActive {
@@ -179,33 +157,7 @@ func (b *Berseks) Update(worldView game.WorldView, manager *hitboxes.CollisionMa
 
 func (b *Berseks) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	for _, enemy := range b.BerserkMass {
-		screenX := enemy.X - camera.X
-		screenY := enemy.Y - camera.Y
-
-		Color := enemy.Color
-		if enemy.CooldownActive {
-			Color = color.RGBA{90, 90, 90, 255}
-		}
-		for _, ability := range enemy.Abilities {
-			if ability.Name() == "Dash" && ability.IsActive() {
-				Color = color.RGBA{140, 90, 90, 225}
-				break
-			}
-		}
-
-		vector.FillRect(
-			screen,
-			float32(screenX),
-			float32(screenY),
-			float32(enemy.Size),
-			float32(enemy.Size),
-			Color,
-			true,
-		)
-
-		for _, effect := range enemy.Effects {
-			effect.Draw(screen, camera, enemy)
-		}
+		enemy.StDraw(screen, camera)
 	}
 }
 

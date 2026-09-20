@@ -15,6 +15,11 @@ type WeaponUser interface {
 	GetSize() int
 	GetSpeedXY() (float64, float64)
 	SetSpeedXY(float64, float64)
+	GetRotationForce() float64        // текущая сила вращения
+	SetRotationForce(force float64)   // установить силу
+	GetRotationDirection() float64    // -1 = влево, 0 = стоит, 1 = вправо
+	SetRotationDirection(dir float64) // задать направление
+	ApplyAngularPush(push float64)    // толчок угла (при столкновении)
 }
 
 // Weapon - интерфейс оружия
@@ -28,6 +33,8 @@ type Weapon interface {
 	Attach(user WeaponUser)
 	GetUser() WeaponUser
 	IsAttached() bool
+	GetPosition() (x, y float64)
+	SetPosition(x, y float64)
 
 	// Физика оружия (как в Marble Kingdoms)
 	GetPhysics() WeaponPhysics
