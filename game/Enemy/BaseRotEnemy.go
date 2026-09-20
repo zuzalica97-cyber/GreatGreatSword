@@ -26,15 +26,15 @@ type RotationComponent struct {
 }
 
 // NewRotationComponent - создаёт компонент вращения с настройками по умолчанию
-func NewRotationComponent() *RotationComponent {
+func NewRotationComponent(rotSpeed, aceleration, deceleration, smoothing float64) *RotationComponent {
 	return &RotationComponent{
 		Angle:           0.0,
 		AngularVelocity: 0.0,
 		TargetAngle:     0.0,
-		RotationSpeed:   180.0, // 360 градусов в секунду
-		Acceleration:    720.0, // ускорение
-		Deceleration:    540.0, // замедление
-		Smoothing:       0.15,  // плавность
+		RotationSpeed:   rotSpeed,
+		Acceleration:    aceleration,  // ускорение
+		Deceleration:    deceleration, // замедление
+		Smoothing:       smoothing,    // плавность
 	}
 }
 

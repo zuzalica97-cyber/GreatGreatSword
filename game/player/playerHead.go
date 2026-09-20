@@ -27,6 +27,9 @@ type PlayerHead struct {
 	Angle           float64
 	AngularVelocity float64
 
+	RotationDirection float64
+	RotationForce     float64
+
 	BoostTimer         float64
 	BoostActive        bool
 	NormalSpeed        float64
@@ -75,15 +78,18 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView, manager *hitboxes.Collisi
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
 		rotationInput = -1
+		p.RotationDirection = -1 // ← запоминаем направление
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyRight) {
 		rotationInput = 1
+		p.RotationDirection = 1 // ← запоминаем направление
 	}
 
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) &&
 		ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
 		rotationInput = 0
+		p.RotationDirection = 0
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyE) {
@@ -92,8 +98,14 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView, manager *hitboxes.Collisi
 
 	p.AbilityHeadManager.UpdateAbilities(woroldWiev)
 
+	// ===== УСТАНАВЛИВАЕМ СИЛУ ВРАЩЕНИЯ =====
+	// Базовая сила вращения игрока
+	p.RotationForce = 1.0 // ← можно вынести в common
+
+	// ===== ПРИМЕНЯЕМ ВРАЩЕНИЕ С УЧЁТОМ СИЛЫ =====
 	if rotationInput != 0 {
-		p.AngularVelocity += rotationInput * p.HAceleration * dt
+		// Ускорение с учётом силы вращения
+		p.AngularVelocity += rotationInput * p.HAceleration * p.RotationForce * dt
 	} else {
 		dec := p.HDeceleration * dt
 		if math.Abs(p.AngularVelocity) > dec {

@@ -3,7 +3,12 @@ package weapons
 import (
 	"great-sword/game"
 	"great-sword/game/hitboxes"
+	"image/color"
 	"math"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/setanarut/kamera/v2"
 )
 
 var _ hitboxes.HitBoxer = (*BaseWeapon)(nil) //ДЗ разобратся с функциями меча и понять его физику. после сделать с помощю baseWeapon  какойнибуть мечь и прикрутитье его к игроку. потом сделать не достающию функция в hitbox
@@ -393,4 +398,57 @@ func (w *BaseWeapon) CanSendEffects(target any) bool {
 		}
 	}
 	return false
+}
+
+//============================================================================
+//ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+//============================================================================
+
+func (b *BaseWeapon) StandartDraw(screen *ebiten.Image, camera *kamera.Camera) {
+	Color := color.RGBA{0, 100, 200, 255}
+
+	// Создаём временное изображение для меча
+	swordImg := ebiten.NewImage(int(b.Width), int(b.Height))
+	swordImg.Fill(Color)
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(-b.Width/2, -b.Height/2)
+	op.GeoM.Rotate(b.Angle * math.Pi / 180)
+	op.GeoM.Translate(b.PositionX, b.PositionY) // мировые координаты
+
+	// Камера сама применит смещение
+	camera.Draw(swordImg, op, screen)
+
+	// Отрисовка точки контакта
+	if b.DebugContactActive {
+		size := 26.0
+		screenX := float32(b.DebugContactX - camera.X - size/2)
+		screenY := float32(b.DebugContactY - camera.Y - size/2)
+
+		vector.FillRect(
+			screen,
+			screenX, screenY,
+			float32(size), float32(size),
+			color.RGBA{255, 0, 0, 255}, // красный
+			true,
+		)
+		b.DebugContactActive = false // сбрасываем после отрисовки
+	}
+}
+
+func (b *BaseWeapon) StandartUpdate() {
+	dt := 1.0 / 60.0
+
+	for _, letter := range b.Letters {
+		letter.UpdateCoolDown(dt)
+	}
+
+	// 1. Обновляем целевую позицию (для ориентации)
+	b.UpdateAttachmentTarget()
+
+	// 2. Применяем физику "гвоздя" с инерцией
+	b.UpdateWeaponAngle(dt)
+
+	b.UpdateWeaponPosition(dt)
+
 }

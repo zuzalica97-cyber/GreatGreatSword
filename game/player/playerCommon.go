@@ -4,7 +4,7 @@ import "great-sword/game/common"
 
 var SwordIxist bool = true
 var SwordIxistTimer float64
-var SwordIxistTimerNormal float64 = 0.3
+var SwordIxistTimerNormal float64 = 0.5
 
 func SwordVanished() {
 	if SwordIxistTimer <= 0 {

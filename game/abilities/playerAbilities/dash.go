@@ -93,11 +93,13 @@ func (d *Dash) Activate(world game.WorldView) {
 			moveY = float64(math.Sin(0))
 		}
 
+		// Активируем способность
+		d.Active = true
+		d.Timer = d.Duration
+		if p.WeaponExist() {
+			d.Timer = d.Duration * 1.7
+		}
 	}
-
-	// Активируем способность
-	d.Active = true
-	d.Timer = d.Duration
 	if !common.SwordExist {
 		d.Cooldown = d.CooldownMax / 2
 	} else {

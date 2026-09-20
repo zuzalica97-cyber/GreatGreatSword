@@ -36,6 +36,7 @@ type PlayerLegInter interface {
 	IsMoving() bool
 	GetHealth() float64
 	SetHealth(float64)
+	WeaponExist() bool
 }
 
 type PlayerHeadInter interface {

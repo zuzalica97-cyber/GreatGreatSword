@@ -5,12 +5,9 @@ import (
 	"great-sword/game/common"
 	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
-	"image/color"
-	"math"
 	"reflect"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/setanarut/kamera/v2"
 )
 
@@ -41,7 +38,7 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser) *Bl
 			common.SwordAttachmentWidth,  // ширина
 			common.SwordAttachmentHeight, // высота
 			10.5,                         // плотность (оригинальная)
-			0.8,                          // проризание
+			7,                            // проризание из 10
 			WeaponPhysics{
 				Weight:              7.0,   // оригинальный вес
 				Friction:            0.5,   // стандартное трение
@@ -62,7 +59,6 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser) *Bl
 			true,
 			0.5,
 			[]hitboxes.Effect{
-				effectsmass.NewBurnEffect(2.0, 50, 3),
 				effectsmass.NewDamageEffect(50),
 			},
 			reflect.TypeOf((*game.Enemy)(nil)).Elem(),
@@ -76,53 +72,13 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser) *Bl
 
 func (b *BlueSwordWeapon) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 
-	dt := 1.0 / 60.0
-
-	for _, letter := range b.Letters {
-		letter.UpdateCoolDown(dt)
-	}
-
-	// 1. Обновляем целевую позицию (для ориентации)
-	b.UpdateAttachmentTarget()
-
-	// 2. Применяем физику "гвоздя" с инерцией
-	b.UpdateWeaponAngle(dt)
-
-	b.UpdateWeaponPosition(dt)
+	b.StandartUpdate()
 
 	return false
 }
 
 func (b *BlueSwordWeapon) Draw(screen *ebiten.Image, camera *kamera.Camera) {
-	Color := color.RGBA{0, 100, 200, 255}
-
-	// Создаём временное изображение для меча
-	swordImg := ebiten.NewImage(int(b.Width), int(b.Height))
-	swordImg.Fill(Color)
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(-b.Width/2, -b.Height/2)
-	op.GeoM.Rotate(b.Angle * math.Pi / 180)
-	op.GeoM.Translate(b.PositionX, b.PositionY) // мировые координаты
-
-	// Камера сама применит смещение
-	camera.Draw(swordImg, op, screen)
-
-	// Отрисовка точки контакта
-	if b.DebugContactActive {
-		size := 26.0
-		screenX := float32(b.DebugContactX - camera.X - size/2)
-		screenY := float32(b.DebugContactY - camera.Y - size/2)
-
-		vector.FillRect(
-			screen,
-			screenX, screenY,
-			float32(size), float32(size),
-			color.RGBA{255, 0, 0, 255}, // красный
-			true,
-		)
-		b.DebugContactActive = false // сбрасываем после отрисовки
-	}
+	b.StandartDraw(screen, camera)
 }
 
 func (b *BlueSwordWeapon) Tag() string {

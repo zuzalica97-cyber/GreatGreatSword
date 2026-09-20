@@ -62,8 +62,11 @@ type RotatableHitBoxer interface {
 }
 
 type WeaponUser interface {
+	HitBoxer
 	GetAngle() float64
 	SetAngle(angle float64)
+	GetRotationForce() float64     // текущая сила вращения
+	ApplyAngularPush(push float64) // толчок угла (при столкновении)
 }
 
 // CollisionManager - управляет коллизиями между всеми HitBoxer
@@ -150,11 +153,15 @@ func (cm *CollisionManager) checkCollision(obj1, obj2 any) {
 
 }
 
-// checkOBBvsOBB - проверка столкновения двух вращающихся объектов
-// ТУТ ДОЛЖНО БЫТЬ ПРОВЕРКА ДВУХ ВРОЩЯЮЩИХСЯ ОБЬЕКТВОВ
-
 // checkOBBvsAABB - проверка столкновения вращающегося и статичного объекта
 func (cm *CollisionManager) checkOBBvsAABB(rot RotatableHitBoxer, stat HitBoxer, a, b any) {
+
+	rotuser := rot.GetHitBoxID()
+
+	if rotuser == stat.GetHitBoxID() {
+		return
+	}
+
 	cx, cy, hw, hh, angle := rot.GetOBB()
 
 	obb := &coll.OBB{
@@ -169,16 +176,26 @@ func (cm *CollisionManager) checkOBBvsAABB(rot RotatableHitBoxer, stat HitBoxer,
 		Half: v.Vec{X: hw2, Y: hh2},
 	}
 
-	hit := &coll.Hit{}
-
 	// 3. Используем готовую функцию из библиотеки coll
 	// Она вернёт true, если AABB и OBB пересекаются
 	if coll.BoxOrientedBoxOverlap(aabb, obb) {
 
-		// Если столкновение есть, обрабатываем его
-		// Так как у нас нет hit-информации, создаём пустой хит или
-		// вызываем resolveCollision без hit-данных
-		cm.resolveCollision(rot, stat, hit, a, b)
+		// ===== ВЫЧИСЛЯЕМ NORMAL И PENETRATION ВРУЧНУЮ =====
+		// Через SAT для OBB vs AABB
+		overlap, normal, penetration := SAT_OBBvsAABB(cx, cy, hw, hh, angle, px, py, hw2, hh2)
+
+		if !overlap {
+			return
+		}
+
+		hit := &coll.Hit{
+			Normal: normal,
+			Data:   penetration,
+		}
+
+		if rot.GetWeaponUser().GetHitBoxID() != stat.GetHitBoxID() {
+			cm.resolveWeaponCollision(rot, stat, hit.Normal, hit.Data)
+		}
 	}
 }
 
@@ -257,6 +274,60 @@ func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit, obj1,
 		pushY := normal.Y * penetration * pushStrength * pushFactorB
 		b.ApplyPush(pushX, pushY)
 	}
+
+}
+
+// resolveWeaponCollision - обрабатывает столкновение оружия с целью
+// Цель отталкивается от оружия, оружие отталкивается от цели,
+// пользователь оружия тоже отталкивается
+func (cm *CollisionManager) resolveWeaponCollision(
+	weapon RotatableHitBoxer,
+	target HitBoxer,
+	normal v.Vec,
+	penetration float64,
+) {
+	if weapon == nil || target == nil {
+		return
+	}
+
+	ABSender(weapon, target)
+	ABSender(target, weapon)
+
+	// ===== 1. ЦЕЛЬ ОТТАЛКИВАЕТСЯ ОТ ОРУЖИЯ =====
+	// Чем глубже проникновение — тем сильнее отталкивание
+	// Направление: от оружия к цели (в сторону normal)
+	targetWeight := target.GetWeight()
+	if targetWeight == 0 {
+		targetWeight = 1
+	}
+
+	// Сила отталкивания цели (зависит от глубины проникновения)
+	// Чем глубже оружие вошло — тем сильнее отталкивается
+	penetration = penetration * 0.5
+	pushStrength := penetration * 0.5
+
+	// Цель отталкивается в направлении normal
+	if !target.IsStatic() {
+		pushX := normal.X * pushStrength / targetWeight * (10 - weapon.GetDensity())
+		pushY := normal.Y * pushStrength / targetWeight * (10 - weapon.GetDensity())
+		target.ApplyPush(pushX, pushY)
+	}
+
+	// ===== 2. ОРУЖИЕ ОТТАЛКИВАЕТСЯ ОТ ЦЕЛИ =====
+	// Оружие отталкивается в обратном направлении (от цели)
+	weaponWeight := weapon.GetWeight()
+	if weaponWeight == 0 {
+		weaponWeight = 1
+	}
+
+	// Оружие отталкивается в направлении -normal
+	weaponPushStrength := penetration * 0.3
+	if !weapon.IsStatic() {
+		pushX := -normal.X * weaponPushStrength / weaponWeight
+		pushY := -normal.Y * weaponPushStrength / weaponWeight
+		weapon.ApplyPush(pushX, pushY)
+	}
+
 }
 
 // Clear - очищает все объекты

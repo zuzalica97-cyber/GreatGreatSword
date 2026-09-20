@@ -52,15 +52,21 @@ func (h *Haters) SpawnHiters(x, y float64, manager *hitboxes.CollisionManager) {
 	enemy := &Haits{
 		BaseEnemy: NewBaseEnemy(
 			x, y,
-			50,  // size
-			35,  // health
-			5,   // damage
-			150, // baseSpeed
-			300, // maxSpeed
+			50,     // size
+			35,     // health
+			5,      // damage
+			150,    // baseSpeed
+			300,    // maxSpeed
+			0.9999, // чем ближе к 1, тем дольше скользит
+			50.0,   // как быстро разгоняется
 			color.RGBA{180, 150, 150, 255},
 			2,
 			0.5,
 			"hater",
+			180.0, // 360 градусов в секунду
+			720.0, // ускорение
+			540.0, // замедление
+			0.15,  // плавность
 		),
 		Distanse: 500,
 		Cooldown: 1.0,

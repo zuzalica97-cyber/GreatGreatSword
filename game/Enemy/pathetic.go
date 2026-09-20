@@ -1,12 +1,9 @@
 package enemy
 
 import (
-	"fmt"
 	"great-sword/game"
 	enemyabilities "great-sword/game/abilities/enemyAbilities"
-	"great-sword/game/common"
 	"great-sword/game/hitboxes"
-	"great-sword/game/player"
 	"great-sword/game/weapons"
 	"image/color"
 
@@ -59,15 +56,21 @@ func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManage
 	enemy := &OnePath{
 		BaseEnemy: NewBaseEnemy(
 			x, y,
-			65,  // size
-			500, // helth
-			5,   // damage
-			100, // speed
-			300, // maxSpeed
+			65,   // size
+			40,   // helth
+			5,    // damage
+			100,  // speed
+			300,  // maxSpeed
+			0.7,  // чем ближе к 1, тем дольше скользит
+			70.0, // как быстро разгоняется
 			color.RGBA{150, 150, 150, 255},
-			3,
+			2,
 			0.6,
 			"pathetic",
+			180.0, // 360 градусов в секунду
+			720.0, // ускорение
+			540.0, // замедление
+			0.15,  // плавность
 		),
 	}
 
@@ -100,7 +103,7 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 
 	playerX, playerY := getPlayerPosition(worldView) //ДЗ делать мечи у партивников. и делать их крутищихся
 
-	if len(p.Paths) < 1 {
+	if len(p.Paths) < 5 {
 		x, y := RangomSpawnInWall(50)
 		p.SpawnPathetic(x, y, manager)
 	}
@@ -108,35 +111,15 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 	for i := 0; i < len(p.Paths); i++ {
 		enemy := p.Paths[i]
 
-		// === ПРОВЕРКА СМЕРТИ ===
-		if !enemy.IsActive() || enemy.GetHealth() <= 0 {
-			if manager != nil {
-				manager.RemoveObject(enemy)
-				enemy.RemoveWeaponFromCollision(manager)
-			}
-			p.Paths[i] = nil
-			p.Paths = append(p.Paths[:i], p.Paths[i+1:]...)
-			i--
-			common.Score++
-			player.ActivateBoost()
+		// Проверка смерти
+		var died bool
+		p.Paths, died = DeathScan(manager, enemy.BaseEnemy, p.Paths, i)
+		if died {
+			i-- // корректируем индекс после удаления
 			continue
 		}
 
-		// ===== ВРАЩЕНИЕ ВПРАВО =====
-		// Вращаемся вправо (1 = вправо, -1 = влево)
-		enemy.Rotation.UpdateRotation(1.0, dt)
-
-		// Обновляем оружие (если есть)
-		if enemy.weapon != nil {
-			enemy.weapon.Update(worldView, manager)
-		}
-
-		// === ОБНОВЛЕНИЕ КУЛДАУНА ===
-		enemy.UpdateCooldown(dt)
-
-		for _, letter := range enemy.Letters {
-			letter.UpdateCoolDown(dt)
-		}
+		enemy.StUpdateCoolDown(dt, worldView, manager)
 
 		// === УСТАНОВКА ЦЕЛИ ===
 		enemy.SetTarget(playerX, playerY)
@@ -152,27 +135,11 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 		// === ОБНОВЛЕНИЕ ЭФФЕКТОВ ===
 		enemy.UpdateEffects(dt)
 
-		if len(enemy.Effects) > 0 {
-			fmt.Println(len(enemy.Effects))
-		}
-
 		if enemy.CooldownActive {
 			enemy.CurrentSpeed = -enemy.CurrentSpeed / 3
 		}
 
-		friction := 0.7      // чем ближе к 1, тем дольше скользит
-		acceleration := 70.0 // как быстро разгоняется
-
-		newSpeed, newDirX, newDirY := enemy.EnemySlideMovmentFunc(friction, acceleration, dt)
-
-		enemy.CurrentSpeed = newSpeed
-		enemy.SetDirection(newDirX, newDirY)
-
-		// === ДВИЖЕНИЕ ===
-		newX, newY := MoveEnemyToTareget(enemy.BaseEnemy, dt)
-
-		enemy.SetPosition(newX, newY)
-
+		enemy.StMovment(dt)
 	}
 
 	return false
@@ -180,32 +147,7 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 
 func (b *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 	for _, b := range b.Paths {
-		// Центр игрока в мировых координатах
-		centerX := b.X + float64(b.Size)/2
-		centerY := b.Y + float64(b.Size)/2
-
-		// Экранные координаты с учётом камеры
-		screenX := centerX - camera.X
-		screenY := centerY - camera.Y
-
-		// 1. Рисуем повёрнутый квадрат
-		DrawRotatedRect(
-			screen,
-			screenX,
-			screenY,
-			float64(b.Size),
-			float64(b.Size),
-			b.Rotation.Angle, // ← угол поворота
-			b.Color,
-		)
-
-		for _, effect := range b.Effects {
-			effect.Draw(screen, camera, b)
-		}
-
-		if b.weapon != nil {
-			b.weapon.Draw(screen, camera)
-		}
+		b.StDraw(screen, camera)
 	}
 }
 

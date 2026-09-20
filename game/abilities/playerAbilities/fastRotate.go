@@ -9,15 +9,16 @@ import (
 var _ game.Ability = (*FastRotate)(nil)
 
 type FastRotate struct {
-	Active        bool
-	Timer         float64
-	Duration      float64
-	Cooldown      float64
-	CooldownMax   float64
-	Speed         float64
-	OriginalSpeed float64
-	OriginalAccel float64
-	OriginalDecel float64
+	Active          bool
+	Timer           float64
+	Duration        float64
+	Cooldown        float64
+	CooldownMax     float64
+	Speed           float64
+	OriginalSpeed   float64
+	OriginalAccel   float64
+	OriginalDecel   float64
+	OriginalDinesty float64
 }
 
 func NewFastRotate() *FastRotate {
@@ -58,6 +59,7 @@ func (f *FastRotate) Update(world game.WorldView) bool {
 				}
 
 				head.SetAceleration(axel * 2) // быстро разгоняется
+
 			}
 		}
 

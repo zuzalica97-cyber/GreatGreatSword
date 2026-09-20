@@ -3,8 +3,10 @@ package enemy
 import (
 	"great-sword/game"
 	movmentcommon "great-sword/game/Enemy/movmentCommon"
+	"great-sword/game/common"
 	"great-sword/game/effects"
 	"great-sword/game/hitboxes"
+	"great-sword/game/player"
 	"great-sword/game/weapons"
 	"math/rand"
 	"reflect"
@@ -12,6 +14,9 @@ import (
 
 	"image/color"
 	"math"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/setanarut/kamera/v2"
 )
 
 var _ weapons.WeaponUser = (*BaseEnemy)(nil)
@@ -57,6 +62,8 @@ type BaseEnemy struct {
 	SpeedX, SpeedY float64
 	CurrentSpeed   float64
 
+	Friction, Acceleration float64
+
 	DirectionX, DirectionY float64
 
 	// Вес объекта (чем больше, тем сложнее сдвинуть)
@@ -80,6 +87,11 @@ type BaseEnemy struct {
 	// Письма (для системы писем)
 	Letters []*hitboxes.Letter
 
+	// Сила вращения
+	RotationForce     float64 // текущая сила вращения (0.0 - 10.0)
+	RotationDirection float64 // -1 = влево, 0 = стоит, 1 = вправо
+	AngularVelocity   float64 // текущая угловая скорость (для инерции)
+
 	weapon weapons.Weapon
 }
 
@@ -87,7 +99,7 @@ type BaseEnemy struct {
 // КОНСТРУКТОР
 // ============================================================
 
-func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, maxSpeed float64, color color.RGBA, weight, density float64, tag string) *BaseEnemy {
+func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, maxSpeed, friction, acceleration float64, color color.RGBA, weight, density float64, tag string, rotSpeed, aceleration, deceleration, smooth float64) *BaseEnemy {
 	b := &BaseEnemy{
 		X:                   x,
 		Y:                   y,
@@ -96,6 +108,8 @@ func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, max
 		Damage:              damage,
 		Speed:               speed,
 		MaxSpeed:            maxSpeed,
+		Friction:            friction,
+		Acceleration:        acceleration,
 		Active:              true,
 		Color:               color,
 		Weight:              weight,
@@ -103,7 +117,7 @@ func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, max
 		CooldownDuration:    2.0,
 		HasAuraField:        true,
 		AffectedByAuraField: true,
-		Rotation:            NewRotationComponent(),
+		Rotation:            NewRotationComponent(rotSpeed, acceleration, deceleration, smooth),
 	}
 
 	numbers := rand.Intn(10000)
@@ -585,6 +599,114 @@ func (b *BaseEnemy) SetAngle(angle float64) {
 	if b.Rotation != nil {
 		b.Rotation.SetAngle(angle)
 	}
+}
+
+func (b *BaseEnemy) GetRotationForce() float64 {
+	return b.RotationForce
+}
+
+func (b *BaseEnemy) SetRotationForce(force float64) {
+	b.RotationForce = force
+}
+
+func (b *BaseEnemy) GetRotationDirection() float64 {
+	return b.RotationDirection
+}
+
+func (b *BaseEnemy) SetRotationDirection(dir float64) {
+	b.RotationDirection = dir
+}
+
+// ApplyAngularPush - толчок угла при столкновении
+func (b *BaseEnemy) ApplyAngularPush(push float64) {
+	// Меняем угловую скорость с учётом силы вращения
+	// Чем выше сила вращения, тем сложнее изменить направление
+	resistance := 1.0 / (b.RotationForce + 1.0)
+	b.AngularVelocity += push * resistance
+}
+
+// DeathScan - проверяет смерть врага и удаляет его из слайса
+// Возвращает: (новый слайс, был ли удалён)
+func DeathScan[T any](manager *hitboxes.CollisionManager, enemy *BaseEnemy, slice []*T, i int) ([]*T, bool) {
+	// === ПРОВЕРКА СМЕРТИ ===
+	if !enemy.IsActive() || enemy.GetHealth() <= 0 {
+		if manager != nil {
+			manager.RemoveObject(enemy)
+			if enemy.weapon != nil {
+				enemy.RemoveWeaponFromCollision(manager)
+			}
+		}
+
+		// Удаляем элемент из слайса
+		slice[i] = nil
+		slice = append(slice[:i], slice[i+1:]...)
+
+		common.Score++
+		player.ActivateBoost()
+
+		return slice, true
+	}
+	return slice, false
+}
+
+func (b *BaseEnemy) StUpdateCoolDown(dt float64, worldView game.WorldView, manager *hitboxes.CollisionManager) {
+	// Обновляем вращение
+	b.Rotation.UpdateRotation(1.0, dt)
+
+	// Обновляем оружие (если есть)
+	if b.weapon != nil {
+		b.weapon.Update(worldView, manager)
+	}
+
+	// === ОБНОВЛЕНИЕ КУЛДАУНА ===
+	b.UpdateCooldown(dt)
+
+	for _, letter := range b.Letters {
+		letter.UpdateCoolDown(dt)
+	}
+}
+
+func (b *BaseEnemy) StMovment(dt float64) {
+	newSpeed, newDirX, newDirY := b.EnemySlideMovmentFunc(b.Friction, b.Acceleration, dt)
+
+	b.CurrentSpeed = newSpeed
+	b.SetDirection(newDirX, newDirY)
+
+	// === ДВИЖЕНИЕ ===
+	newX, newY := MoveEnemyToTareget(b, dt)
+
+	b.SetPosition(newX, newY)
+
+}
+
+func (b *BaseEnemy) StDraw(screen *ebiten.Image, camera *kamera.Camera) {
+	// Центр игрока в мировых координатах
+	centerX := b.X + float64(b.Size)/2
+	centerY := b.Y + float64(b.Size)/2
+
+	// Экранные координаты с учётом камеры
+	screenX := centerX - camera.X
+	screenY := centerY - camera.Y
+
+	// 1. Рисуем повёрнутый квадрат
+	DrawRotatedRect(
+		screen,
+		screenX,
+		screenY,
+		float64(b.Size),
+		float64(b.Size),
+		b.Rotation.Angle, // ← угол поворота
+		b.Color,
+	)
+
+	for _, effect := range b.Effects {
+		effect.Draw(screen, camera, b)
+	}
+
+	if b.weapon != nil {
+		b.weapon.Draw(screen, camera)
+	}
+
 }
 
 // ============================================================

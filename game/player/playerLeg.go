@@ -40,6 +40,11 @@ type PlayerLeg struct {
 	Density          float64
 	Size             float64
 
+	// Сила вращения
+	RotationForce     float64 // текущая сила вращения (0.0 - 10.0)
+	RotationDirection float64 // -1 = влево, 0 = стоит, 1 = вправо
+	AngularVelocity   float64 // текущая угловая скорость (для инерции)
+
 	AbilityLegManager *gameL.PlayerWorld
 
 	Effects []hitboxes.Effect  // список активных эффектов
@@ -152,9 +157,10 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 	}
 
 	if !SwordIxist {
-		p.CurrentMaxSpeed = common.MaxSpeed * 1.5
+		p.CurrentMaxSpeed = common.MaxSpeed * 2
 		p.AxelerationLeg = common.Acceleration * 1.8   // резкий разгон
 		p.DeAxelerationLeg = common.Deceleration * 2.0 // резкое торможение
+		p.Weapon.SetPosition(4000, 4000)
 	}
 
 	p.MoveX = moveX
@@ -309,4 +315,32 @@ func (p *PlayerLeg) SetAngle(angle float64) {
 	if p.Head != nil {
 		p.Head.Angle = angle
 	}
+}
+
+func (b *PlayerLeg) GetRotationForce() float64 {
+	return b.RotationForce
+}
+
+func (b *PlayerLeg) SetRotationForce(force float64) {
+	b.RotationForce = force
+}
+
+func (b *PlayerLeg) GetRotationDirection() float64 {
+	return b.RotationDirection
+}
+
+func (b *PlayerLeg) SetRotationDirection(dir float64) {
+	b.RotationDirection = dir
+}
+
+// ApplyAngularPush - толчок угла при столкновении
+func (b *PlayerLeg) ApplyAngularPush(push float64) {
+	// Меняем угловую скорость с учётом силы вращения
+	// Чем выше сила вращения, тем сложнее изменить направление
+	resistance := 1.0 / (b.RotationForce + 1.0)
+	b.AngularVelocity += push * resistance
+}
+
+func (b *PlayerLeg) WeaponExist() bool {
+	return SwordIxist
 }

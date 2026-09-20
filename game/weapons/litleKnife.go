@@ -4,13 +4,10 @@ import (
 	"great-sword/game"
 	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
-	"image/color"
-	"math"
 	"math/rand"
 	"reflect"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/setanarut/kamera/v2"
 )
 
@@ -38,10 +35,10 @@ func NewlitleKnife(manager *hitboxes.CollisionManager, user WeaponUser) *LitleKn
 
 	weapon := &LitleKnife{
 		BaseWeapon: NewBaseWeapon(
-			90,   // ширина
-			40,   // высота
-			2.5,  // плотность (оригинальная)
-			0.03, // проризание
+			90,  // ширина
+			40,  // высота
+			2.5, // плотность (оригинальная)
+			3,   // проризание из 10
 			WeaponPhysics{
 				Weight:              3.0,   // оригинальный вес
 				Friction:            0.5,   // стандартное трение
@@ -62,7 +59,7 @@ func NewlitleKnife(manager *hitboxes.CollisionManager, user WeaponUser) *LitleKn
 			true,
 			0.5,
 			[]hitboxes.Effect{
-				effectsmass.NewDamageEffect(0),
+				effectsmass.NewDamageEffect(5),
 			},
 			reflect.TypeOf((*game.PlayerLegInter)(nil)).Elem(),
 		),
@@ -75,53 +72,12 @@ func NewlitleKnife(manager *hitboxes.CollisionManager, user WeaponUser) *LitleKn
 
 func (b *LitleKnife) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 
-	dt := 1.0 / 60.0
-
-	for _, letter := range b.Letters {
-		letter.UpdateCoolDown(dt)
-	}
-
-	// 1. Обновляем целевую позицию (для ориентации)
-	b.UpdateAttachmentTarget()
-
-	// 2. Применяем физику "гвоздя" с инерцией
-	b.UpdateWeaponAngle(dt)
-
-	b.UpdateWeaponPosition(dt)
-
+	b.StandartUpdate()
 	return false
 }
 
 func (b *LitleKnife) Draw(screen *ebiten.Image, camera *kamera.Camera) {
-	Color := color.RGBA{0, 100, 200, 255}
-
-	// Создаём временное изображение для меча
-	swordImg := ebiten.NewImage(int(b.Width), int(b.Height))
-	swordImg.Fill(Color)
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(-b.Width/2, -b.Height/2)
-	op.GeoM.Rotate(b.Angle * math.Pi / 180)
-	op.GeoM.Translate(b.PositionX, b.PositionY) // мировые координаты
-
-	// Камера сама применит смещение
-	camera.Draw(swordImg, op, screen)
-
-	// Отрисовка точки контакта
-	if b.DebugContactActive {
-		size := 16.0
-		screenX := float32(b.DebugContactX - camera.X - size/2)
-		screenY := float32(b.DebugContactY - camera.Y - size/2)
-
-		vector.FillRect(
-			screen,
-			screenX, screenY,
-			float32(size), float32(size),
-			color.RGBA{255, 0, 0, 255}, // красный
-			true,
-		)
-		b.DebugContactActive = false // сбрасываем после отрисовки
-	}
+	b.StandartDraw(screen, camera)
 }
 
 func (b *LitleKnife) Tag() string {
