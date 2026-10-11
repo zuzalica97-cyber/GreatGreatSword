@@ -19,10 +19,11 @@ type RotationComponent struct {
 	TargetAngle     float64 // целевой угол (куда враг смотрит)
 
 	// Параметры вращения
-	RotationSpeed float64 // максимальная скорость вращения
-	Acceleration  float64 // ускорение вращения
-	Deceleration  float64 // замедление вращения
-	Smoothing     float64 // плавность поворота (0.05-0.2)
+	RotationSpeed           float64 // максимальная скорость вращения
+	Acceleration            float64 // ускорение вращения
+	Deceleration            float64 // замедление вращения
+	Smoothing               float64 // плавность поворота (0.05-0.2)
+	ExternalAngularVelocity float64 // ← внешний толчок (от столкновений
 }
 
 // NewRotationComponent - создаёт компонент вращения с настройками по умолчанию
@@ -62,9 +63,15 @@ func (r *RotationComponent) UpdateRotation(direction float64, dt float64) {
 		r.AngularVelocity = -r.RotationSpeed
 	}
 
+	// ===== ПРИМЕНЯЕМ ВНЕШНИЙ ТОЛЧОК =====
+	totalVelocity := r.AngularVelocity + r.ExternalAngularVelocity
+
 	// Применяем вращение
-	r.Angle += r.AngularVelocity * dt
+	r.Angle += totalVelocity * dt
 	r.TargetAngle = r.Angle
+
+	// Затухание внешнего толчка
+	r.ExternalAngularVelocity *= (1 - 5.0*dt) // быстро затухает
 
 	// Нормализуем угол
 	r.Angle = math.Mod(r.Angle, 360)

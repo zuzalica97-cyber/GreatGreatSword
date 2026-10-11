@@ -57,8 +57,6 @@ type RotatableHitBoxer interface {
 	SetAngle(angle float64)
 	GetTargetAngle() float64
 	GetWeaponUser() WeaponUser
-
-	Debag(x, y float64)
 }
 
 type WeaponUser interface {
@@ -260,18 +258,18 @@ func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit, obj1,
 	}
 
 	// Базовая сила отталкивания
-	pushStrength := 0.3 * densityFactor
+	pushStrength := densityFactor
 
 	// Применяем отталкивание с учётом веса и плотности
 	if !a.IsStatic() {
-		pushX := -normal.X * penetration * pushStrength * pushFactorA
-		pushY := -normal.Y * penetration * pushStrength * pushFactorA
+		pushX := -normal.X * penetration * pushStrength * pushFactorA * 0.5
+		pushY := -normal.Y * penetration * pushStrength * pushFactorA * 0.5
 		a.ApplyPush(pushX, pushY)
 	}
 
 	if !b.IsStatic() {
-		pushX := normal.X * penetration * pushStrength * pushFactorB
-		pushY := normal.Y * penetration * pushStrength * pushFactorB
+		pushX := normal.X * penetration * pushStrength * pushFactorB * 0.5
+		pushY := normal.Y * penetration * pushStrength * pushFactorB * 0.5
 		b.ApplyPush(pushX, pushY)
 	}
 

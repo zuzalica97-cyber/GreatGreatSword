@@ -3,12 +3,14 @@ package main
 import (
 	"embed"
 	"fmt"
+	"great-sword/game"
 	enemy "great-sword/game/Enemy"
 	"great-sword/game/common"
+
 	"great-sword/game/hitboxes"
 	"great-sword/game/player"
 	swords "great-sword/game/player/Swords"
-	game "great-sword/game/world"
+	gameW "great-sword/game/world"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -26,7 +28,7 @@ var (
 )
 
 type Game struct {
-	world                        *game.World
+	world                        *gameW.World
 	gameOver                     bool
 	lowerTexture                 *ebiten.Image
 	MainKamera                   kamera.Camera
@@ -35,7 +37,7 @@ type Game struct {
 	frameCounter                 float64 // ВРЕМЕННО
 }
 
-func NewGame(world *game.World, manager *hitboxes.CollisionManager) *Game {
+func NewGame(world *gameW.World, manager *hitboxes.CollisionManager) *Game {
 	var g *Game
 	var err error
 	g = &Game{
@@ -212,7 +214,7 @@ func main() {
 	ebiten.SetWindowSize(common.ScreenWidth, common.ScreenHeight)
 	ebiten.SetWindowTitle("GratGreatSword_v0.1")
 
-	world := game.NewWorld()
+	world := gameW.NewWorld()
 
 	manager := hitboxes.NewCollisionManager()
 
@@ -230,9 +232,26 @@ func main() {
 	world.AddEntity(
 		enemy.NawHaters(),
 	)
-	world.AddEntity(
-		enemy.NewBerserk(),
-	)
+
+	// 1. Создаём менеджер сущностей
+	em := game.NewEntityManager()
+
+	// 2. Регистрируем типы врагов
+	em.RegisterEnemyType("berserk", func(x, y float64) game.Enemy {
+		return enemy.SpawnBreserk(x, y, manager)
+	})
+
+	world.AddEntity(em)
+
+	fmt.Println(em.CollEntity())
+
+	card := game.NewRoomCard()
+
+	card.AddEnemy("berserk", 300, 300)
+	card.AddEnemy("berserk", 500, 400)
+	card.AddEnemy("berserk", 700, 200)
+
+	em.SpawnFromRoom(card)
 
 	g := NewGame(world, manager)
 

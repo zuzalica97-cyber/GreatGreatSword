@@ -47,9 +47,10 @@ type PlayerLeg struct {
 
 	AbilityLegManager *gameL.PlayerWorld
 
-	Effects []hitboxes.Effect  // список активных эффектов
-	Letters []*hitboxes.Letter // письма для отправки
-	Weapon  weapons.Weapon
+	Effects    []hitboxes.Effect  // список активных эффектов
+	Letters    []*hitboxes.Letter // письма для отправки
+	Weapon     []weapons.Weapon
+	weaponBage []weapons.Weapon
 }
 
 func NewPlayerLeg(manager *hitboxes.CollisionManager, head *PlayerHead) *PlayerLeg {
@@ -73,7 +74,7 @@ func NewPlayerLeg(manager *hitboxes.CollisionManager, head *PlayerHead) *PlayerL
 		playerabilities.NewDash(),
 	)
 
-	p.SetWeapon(weapons.NewBlueSwordWeapon(manager, p))
+	p.AddWeapon(weapons.NewBlueSwordWeapon(manager, p, "left"))
 
 	if manager != nil {
 		manager.AddObject(p)
@@ -91,8 +92,10 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 	dt := 1.0 / 60.0
 
 	common.SwordExist = SwordIxist
-	if p.Weapon != nil {
-		p.Weapon.Update(worldView, manager)
+	if p.Weapon != nil && SwordIxist {
+		for _, w := range p.Weapon {
+			w.Update(worldView, manager)
+		}
 	}
 
 	if common.PlayerHelth >= common.MaxPlayerHelth {
@@ -112,7 +115,7 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyF) {
-		SwordVanished()
+		p.SwordVanished(manager)
 	}
 
 	p.Rebound = Rebount
@@ -124,12 +127,6 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 
 	if BoostTimer > 0 {
 		p.CurrentMaxSpeed = common.MaxSpeed + float64(BoostSpeed)
-	}
-	if !SwordIxist {
-		p.CurrentMaxSpeed = common.MaxSpeed * 2
-		p.DeAxelerationLeg = common.Deceleration / 5
-		p.AxelerationLeg = common.Acceleration * 2
-
 	}
 
 	if p.CurrentMaxSpeed > float64(common.MaxPlayerSpeedMoving) {
@@ -160,7 +157,13 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 		p.CurrentMaxSpeed = common.MaxSpeed * 2
 		p.AxelerationLeg = common.Acceleration * 1.8   // резкий разгон
 		p.DeAxelerationLeg = common.Deceleration * 2.0 // резкое торможение
-		p.Weapon.SetPosition(4000, 4000)
+		if p.Weapon != nil {
+			for _, w := range p.Weapon {
+				manager.RemoveObject(w)
+			}
+			p.weaponBage = p.GetAllWeapons()
+			p.SetAllWeapons(nil)
+		}
 	}
 
 	p.MoveX = moveX
@@ -230,8 +233,10 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 }
 
 func (p *PlayerLeg) Draw(screen *ebiten.Image, camera *kamera.Camera) { //ДЗ сделай чтобы игрок нармально держал мечь и сделай физику столкнавения мечей.
-	if p.Weapon != nil {
-		p.Weapon.Draw(screen, camera)
+	if p.Weapon != nil && SwordIxist {
+		for _, w := range p.Weapon {
+			w.Draw(screen, camera)
+		}
 	}
 }
 
@@ -290,15 +295,33 @@ func (p *PlayerLeg) IsActive() bool {
 
 // GetWeapon - возвращает оружие игрока
 func (p *PlayerLeg) GetWeapon() weapons.Weapon {
-	return p.Weapon
+	for i := 0; i < len(p.Weapon); i++ {
+		if i == len(p.Weapon) {
+			return p.Weapon[i]
+		}
+	}
+	return nil
 }
 
 // SetWeapon - устанавливает оружие игроку
 func (p *PlayerLeg) SetWeapon(weapon weapons.Weapon) {
-	p.Weapon = weapon
-	if weapon != nil {
-		weapon.Attach(p)
+	for i := 0; i < len(p.Weapon); i++ {
+		if i == len(p.Weapon) {
+			p.Weapon[i] = weapon
+		}
 	}
+}
+
+func (p *PlayerLeg) AddWeapon(weapon weapons.Weapon) {
+	p.Weapon = append(p.Weapon, weapon)
+}
+
+func (p *PlayerLeg) GetAllWeapons() []weapons.Weapon {
+	return p.Weapon
+}
+
+func (p *PlayerLeg) SetAllWeapons(weapons []weapons.Weapon) {
+	p.Weapon = weapons
 }
 
 // GetAngle - возвращает угол поворота головы (у игрока это Head.Angle)
@@ -335,10 +358,11 @@ func (b *PlayerLeg) SetRotationDirection(dir float64) {
 
 // ApplyAngularPush - толчок угла при столкновении
 func (b *PlayerLeg) ApplyAngularPush(push float64) {
-	// Меняем угловую скорость с учётом силы вращения
-	// Чем выше сила вращения, тем сложнее изменить направление
 	resistance := 1.0 / (b.RotationForce + 1.0)
-	b.AngularVelocity += push * resistance
+	effect := push * resistance
+
+	// Добавляем к внешнему толчку, а не к основной скорости
+	b.Head.ExternalAngularVelocity -= effect
 }
 
 func (b *PlayerLeg) WeaponExist() bool {

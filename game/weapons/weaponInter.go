@@ -8,8 +8,10 @@ import (
 // WeaponUser - сущность, которая может использовать оружие
 type WeaponUser interface {
 	hitboxes.WeaponUser
+	SetAllWeapons(weapons []Weapon)
 	GetWeapon() Weapon
 	SetWeapon(weapon Weapon)
+	AddWeapon(weapon Weapon)
 	ApplyPush(x, y float64) // для передачи сдвига от оружия
 	GetPosition() (float64, float64)
 	GetSize() int

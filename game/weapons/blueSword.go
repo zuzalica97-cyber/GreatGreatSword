@@ -5,6 +5,7 @@ import (
 	"great-sword/game/common"
 	effectsmass "great-sword/game/effects/effectsMass"
 	"great-sword/game/hitboxes"
+	"image/color"
 	"reflect"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -25,7 +26,7 @@ type BlueSwordWeapon struct {
 }
 
 // NewBlueSwordWeapon - создаёт копию BlueSword на основе BaseWeapon
-func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser) *BlueSwordWeapon {
+func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser, side string) *BlueSwordWeapon {
 	// Оригинальные параметры BlueSword:
 	// - Weight: 7
 	// - Density: 5.5
@@ -35,10 +36,10 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser) *Bl
 
 	weapon := &BlueSwordWeapon{
 		BaseWeapon: NewBaseWeapon(
-			common.SwordAttachmentWidth,  // ширина
-			common.SwordAttachmentHeight, // высота
-			10.5,                         // плотность (оригинальная)
-			7,                            // проризание из 10
+			common.SwordAttachmentWidth, // ширина
+			30,                          // высота
+			10.5,                        // плотность (оригинальная)
+			0.5,                         // проризание из 10
 			WeaponPhysics{
 				Weight:              7.0,   // оригинальный вес
 				Friction:            0.5,   // стандартное трение
@@ -49,12 +50,38 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser) *Bl
 				SmoothingPos:        0.1,   //сила пиритаскивания оружия
 				SmoothingReturn:     0.1,   // скорость возврата угла к цели
 			},
+			side,
 			"blueSwordCopy",
 			user,
 		),
 	}
 
-	weapon.Letters = []*hitboxes.Letter{
+	// ===== ГАРДА =====
+	garda := NewWeaponPart(
+		-70, // смещение X (по центру)
+		0,   // смещение Y (вверх от центра)
+		15,  // ширина
+		80,  // высота
+		0,   // угол
+		"blueSword_gard",
+		color.RGBA{100, 100, 100, 255},
+		weapon.BaseWeapon,
+	)
+	garda.Weight = 7.0
+	garda.Density = 1.0 // тяжёлое, твёрдое
+
+	head := NewWeaponPart(
+		20,
+		0,
+		common.SwordAttachmentWidth,
+		common.SwordAttachmentHeight,
+		0,
+		"blueSword_head",
+		color.RGBA{100, 100, 100, 255},
+		weapon.BaseWeapon,
+	)
+
+	head.Letters = []*hitboxes.Letter{
 		hitboxes.NewLetter(
 			true,
 			0.5,
@@ -64,6 +91,9 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser) *Bl
 			reflect.TypeOf((*game.Enemy)(nil)).Elem(),
 		),
 	}
+
+	// Добавляем части в оружие
+	weapon.Parts = []*WeaponPart{head, garda}
 
 	manager.AddObject(weapon)
 

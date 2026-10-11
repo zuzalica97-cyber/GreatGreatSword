@@ -25,7 +25,7 @@ type LitleKnife struct {
 }
 
 // NewBlueSwordWeapon - создаёт копию BlueSword на основе BaseWeapon
-func NewlitleKnife(manager *hitboxes.CollisionManager, user WeaponUser) *LitleKnife {
+func NewlitleKnife(manager *hitboxes.CollisionManager, user WeaponUser, side string) *LitleKnife {
 	// Оригинальные параметры BlueSword:
 	// - Weight: 7
 	// - Density: 5.5
@@ -49,6 +49,7 @@ func NewlitleKnife(manager *hitboxes.CollisionManager, user WeaponUser) *LitleKn
 				SmoothingPos:        0.5,   //сила пиритаскивания оружия
 				SmoothingReturn:     0.1,   // скорость возврата угла к цели
 			},
+			side,
 			"litleKnife"+string(rand.Intn(1000)),
 			user,
 		),

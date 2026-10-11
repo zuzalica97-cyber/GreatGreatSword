@@ -11,12 +11,14 @@ import (
 	"github.com/setanarut/kamera/v2"
 )
 
+var _ game.GameWeapon = (*BigSword)(nil)
+
 type BigSword struct {
 	*BaseWeapon
 }
 
 // NewBlueSwordWeapon - создаёт копию BlueSword на основе BaseWeapon
-func NewBigSword(manager *hitboxes.CollisionManager, user WeaponUser) *BigSword {
+func NewBigSword(manager *hitboxes.CollisionManager, user WeaponUser, side string) *BigSword {
 	// Оригинальные параметры BlueSword:
 	// - Weight: 7
 	// - Density: 5.5
@@ -40,6 +42,7 @@ func NewBigSword(manager *hitboxes.CollisionManager, user WeaponUser) *BigSword 
 				SmoothingPos:        0.5,   //сила пиритаскивания оружия
 				SmoothingReturn:     0.05,  // скорость возврата угла к цели
 			},
+			side,
 			"bigSword"+string(rand.Intn(1000)),
 			user,
 		),

@@ -6,6 +6,7 @@ import (
 	"great-sword/game/hitboxes"
 	"great-sword/game/weapons"
 	"image/color"
+	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/setanarut/kamera/v2"
@@ -15,7 +16,6 @@ var _ game.Entity = (*Pathetic)(nil)
 var _ hitboxes.HitBoxer = (*OnePath)(nil)
 var _ enemyabilities.EnemyUser = (*OnePath)(nil)
 var _ hitboxes.LetterReceiver = (*OnePath)(nil)
-var _ game.Enemy = (*OnePath)(nil)
 
 // ============================================================
 // ОСНОВНАЯ СТРУКТУРА ВРАГА
@@ -57,7 +57,7 @@ func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManage
 		BaseEnemy: NewBaseEnemy(
 			x, y,
 			65,   // size
-			40,   // helth
+			4000, // helth
 			5,    // damage
 			100,  // speed
 			300,  // maxSpeed
@@ -80,7 +80,7 @@ func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManage
 		enemyabilities.NewDashAbility(250, 450, 2, 0.5),
 	}
 
-	enemy.SetWeapon(weapons.NewlitleKnife(manager, enemy))
+	enemy.AddWeapon(weapons.NewHammer(enemy, "left", manager))
 
 	p.Paths = append(p.Paths, enemy)
 	if manager != nil {
@@ -103,7 +103,7 @@ func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionM
 
 	playerX, playerY := getPlayerPosition(worldView) //ДЗ делать мечи у партивников. и делать их крутищихся
 
-	if len(p.Paths) < 5 {
+	if len(p.Paths) < 0 {
 		x, y := RangomSpawnInWall(50)
 		p.SpawnPathetic(x, y, manager)
 	}
@@ -156,7 +156,7 @@ func (b *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 // ============================================================
 
 func (p *Pathetic) Tag() string {
-	return "pathetic"
+	return "pathetic" + string(rand.Intn(1000))
 }
 
 func (p *Pathetic) IsActive() bool {
