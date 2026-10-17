@@ -27,26 +27,22 @@ type Drawler interface {
 
 // Enemy - интерфейс для всех врагов
 type Enemy interface {
-	hitboxes.HitBoxer // для коллизий
+	Entity                  // Update, Draw, Tag, IsActive
+	hitboxes.HitBoxer       // для коллизий
+	hitboxes.LetterSender   // для передачи эффектов
+	hitboxes.LetterReceiver // для получения эффектов
+	hitboxes.EffectUser     // для работы с эффектами
 
-	// Базовые параметры
+	// Данные врага
 	GetHealth() float64
-	SetHealth(health float64)
-	GetDamage() float64
 	GetPosition() (float64, float64)
 	SetPosition(x, y float64)
-	GetSpeed() float64
-	SetSpeed(speed float64)
-	GetSpeedXY() (float64, float64)
-	SetSpeedXY(x, y float64)
-	GetDirection() (float64, float64)
-	SetDirection(x, y float64)
-	UpdateDirection(targetX, targetY float64)
-	GetTargetDirecton() (targetX, targetY float64)
-	SetTargetDirecton(targetX, targetY float64)
+	GetSize() int
+	StUpdateCoolDown(dt float64, worldView WorldView, manager *hitboxes.CollisionManager)
 
-	// Действия
-	TakeDamage(damage float64) // получить урон
+	// Смерть
+	OnDeath(manager *hitboxes.CollisionManager, obj hitboxes.HitBoxer) // что делать при смерти
+
 }
 
 // ============================================================
@@ -58,6 +54,7 @@ type Projectile interface {
 	Entity
 	hitboxes.HitBoxer // для коллизий
 
+	GetWeapon() GameWeapon
 	GetDamage() int
 	GetDirection() (float64, float64)
 	GetSpeed() float64
@@ -65,6 +62,25 @@ type Projectile interface {
 
 	// При попадании в цель
 	OnHit(target Entity, world WorldView)
+}
+
+// ============================================================
+// ОРУЖИЕ
+// ============================================================
+
+type GameWeapon interface {
+	Drawler
+	Entity
+	hitboxes.HitBoxer
+	hitboxes.LetterSender
+
+	IsAttached() bool
+	GetPosition() (x, y float64)
+	SetPosition(x, y float64)
+
+	// Проризание (насколько глубоко оружие входит в объект)
+	GetPenetration() float64
+	SetPenetration(penetration float64)
 }
 
 // ============================================================
@@ -81,6 +97,7 @@ type Player interface {
 	TakeDamage(damage int)
 	GetPosition() (float64, float64)
 	SetPosition(x, y float64)
+	GetWeapon() GameWeapon
 }
 
 // ============================================================

@@ -8,8 +8,10 @@ import (
 // WeaponUser - сущность, которая может использовать оружие
 type WeaponUser interface {
 	hitboxes.WeaponUser
+	SetAllWeapons(weapons []Weapon)
 	GetWeapon() Weapon
 	SetWeapon(weapon Weapon)
+	AddWeapon(weapon Weapon)
 	ApplyPush(x, y float64) // для передачи сдвига от оружия
 	GetPosition() (float64, float64)
 	GetSize() int
@@ -43,6 +45,9 @@ type Weapon interface {
 	// Проризание (насколько глубоко оружие входит в объект)
 	GetPenetration() float64
 	SetPenetration(penetration float64)
+
+	DestroyWeapon(manager *hitboxes.CollisionManager)
+	RemoveParts(manager *hitboxes.CollisionManager)
 }
 
 // ============================================================

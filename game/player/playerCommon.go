@@ -1,18 +1,25 @@
 package player
 
-import "great-sword/game/common"
+import (
+	"great-sword/game/common"
+	"great-sword/game/hitboxes"
+)
 
 var SwordIxist bool = true
 var SwordIxistTimer float64
 var SwordIxistTimerNormal float64 = 0.5
 
-func SwordVanished() {
+func (p *PlayerLeg) SwordVanished(manager *hitboxes.CollisionManager) {
 	if SwordIxistTimer <= 0 {
 		SwordIxistTimer = SwordIxistTimerNormal
 		if SwordIxist {
 			SwordIxist = false
 		} else {
 			SwordIxist = true
+			p.SetAllWeapons(p.weaponBage)
+			for _, w := range p.weaponBage {
+				manager.AddObject(w)
+			}
 		}
 	}
 }

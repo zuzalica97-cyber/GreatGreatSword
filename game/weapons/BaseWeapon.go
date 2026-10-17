@@ -1,6 +1,7 @@
 package weapons
 
 import (
+	"fmt"
 	"great-sword/game"
 	"great-sword/game/hitboxes"
 	"image/color"
@@ -11,7 +12,10 @@ import (
 	"github.com/setanarut/kamera/v2"
 )
 
-var _ hitboxes.HitBoxer = (*BaseWeapon)(nil) //ДЗ разобратся с функциями меча и понять его физику. после сделать с помощю baseWeapon  какойнибуть мечь и прикрутитье его к игроку. потом сделать не достающию функция в hitbox
+var _ hitboxes.HitBoxer = (*BaseWeapon)(nil) //ДЗ разобратся с частами меча их работой а потом переходить к фабрике монстров
+var _ hitboxes.RotatableHitBoxer = (*WeaponPart)(nil)
+var _ hitboxes.LetterSender = (*WeaponPart)(nil)
+var _ hitboxes.PartRot = (*WeaponPart)(nil)
 
 // ============================================================
 // BaseWeapon - базовая структура оружия (как у меча)
@@ -28,6 +32,9 @@ type BaseWeapon struct {
 	Angle                float64
 	TargetAngle          float64
 	AngularVelocity      float64
+	// Сторона привязки к пользователю
+	// "right", "left", "up", "down"
+	AttachSide string
 
 	AnchorX, AnchorY     float64 // точка крепления (центр пользователя)
 	MaxLength            float64 // максимальная длина "нити"
@@ -46,6 +53,9 @@ type BaseWeapon struct {
 	// Уникальный ID
 	ID string
 
+	// Части оружия
+	Parts []*WeaponPart
+
 	// Физические параметры (встроены в структуру)
 	Physics WeaponPhysics
 
@@ -56,23 +66,62 @@ type BaseWeapon struct {
 	DebugContactActive           bool    // есть ли столкновение
 }
 
+// WeaponPart - часть оружия (отдельная фигура)
+type WeaponPart struct {
+	// Смещение относительно центра оружия
+	OffsetX, OffsetY float64
+	// Размер
+	Width, Height float64
+	// Угол относительно оружия
+	AngleOffset float64
+	// ID для коллизий
+	ID string
+	// Письма для эффектов
+	Letters []*hitboxes.Letter
+	// Вес и плотность
+	Weight, Density float64
+	// мировые координаты (вычисляются автоматически)
+	WorldX, WorldY float64
+	WorldAngle     float64
+
+	Collor color.Color
+
+	ParentWeapon *BaseWeapon // ← ссылка на родительское оружие
+}
+
 // ============================================================
 // КОНСТРУКТОР
 // ============================================================
 
 // NewBaseWeapon - создаёт базовое оружие
-func NewBaseWeapon(width, height, density, penetration float64, physics WeaponPhysics, id string, user WeaponUser) *BaseWeapon {
+func NewBaseWeapon(width, height, density, penetration float64, physics WeaponPhysics, side string, id string, user WeaponUser) *BaseWeapon {
 	return &BaseWeapon{
 		Width:       width,
 		Height:      height,
 		Density:     density,
 		Penetration: penetration,
 		Physics:     physics,
+		AttachSide:  side,
 		Active:      true,
 		attached:    false,
 		ID:          id,
 		MaxLength:   50,
 		user:        user,
+	}
+}
+
+func NewWeaponPart(offsetX, offsetY, width, height, angleOffset float64, id string, collor color.Color, rutWeapon *BaseWeapon) *WeaponPart {
+	return &WeaponPart{
+		OffsetX:      offsetX,
+		OffsetY:      offsetY,
+		Width:        width,
+		Height:       height,
+		AngleOffset:  angleOffset,
+		ID:           id,
+		Weight:       1.0,
+		Density:      0.8,
+		Collor:       collor,
+		ParentWeapon: rutWeapon,
 	}
 }
 
@@ -138,6 +187,107 @@ func (w *BaseWeapon) SetAngle(angle float64) {
 }
 
 // ============================================================
+// РЕАЛИЗАЦИЯ ЛОГИКИ ДЛЯ ЧАСТЕЙ ОРУЖИЯ
+// ============================================================
+
+// UpdateParts - обновляет мировые координаты всех частей оружия
+func (b *BaseWeapon) UpdateParts(dt float64) {
+	angleRad := b.Angle * math.Pi / 180
+
+	for _, part := range b.Parts {
+
+		for _, letter := range part.Letters {
+			letter.UpdateCoolDown(dt)
+
+		}
+
+		// Поворачиваем смещение части на угол оружия
+		rotatedX := part.OffsetX*math.Cos(angleRad) - part.OffsetY*math.Sin(angleRad)
+		rotatedY := part.OffsetX*math.Sin(angleRad) + part.OffsetY*math.Cos(angleRad)
+
+		// Мировые координаты части
+		part.WorldX = b.PositionX + rotatedX
+		part.WorldY = b.PositionY + rotatedY
+
+		// Мировой угол части
+		part.WorldAngle = b.Angle + part.AngleOffset
+	}
+}
+
+func (p *WeaponPart) GetAABB() (posX, posY, halfW, halfH float64) {
+	return p.WorldX, p.WorldY, p.Width / 2, p.Height / 2
+}
+
+func (p *WeaponPart) GetOBB() (centerX, centerY, halfW, halfH, angle float64) {
+	return p.WorldX, p.WorldY, p.Width / 2, p.Height / 2, p.WorldAngle * math.Pi / 180
+}
+
+func (p *WeaponPart) GetHitBoxID() string {
+	return p.ID
+}
+
+func (p *WeaponPart) IsActive() bool {
+	return true
+}
+
+func (p *WeaponPart) IsStatic() bool {
+	return false
+}
+
+func (w *WeaponPart) ApplyPush(x, y float64) {
+	if w.ParentWeapon != nil {
+		w.ParentWeapon.ApplyPush(x, y)
+	}
+}
+
+func (p *WeaponPart) OnCollision(other hitboxes.HitBoxer) {
+}
+
+func (p *WeaponPart) GetWeight() float64 {
+	return p.Weight
+}
+
+func (p *WeaponPart) GetDensity() float64 {
+	return p.Density
+}
+
+func (p *WeaponPart) HasAura() bool {
+	return false
+}
+
+func (p *WeaponPart) AffectedByAura() bool {
+	return false
+}
+
+// GetAngle - возвращает текущий мировой угол части
+func (p *WeaponPart) GetAngle() float64 {
+	return p.WorldAngle
+}
+
+// GetAngle - возвращает текущий мировой угол части
+func (p *WeaponPart) SetAngle(angle float64) {
+	p.WorldAngle = angle
+}
+
+func (p *WeaponPart) GetTargetAngle() float64 {
+	return p.WorldAngle
+}
+
+func (p *WeaponPart) GetWeaponUser() hitboxes.WeaponUser {
+	if p.ParentWeapon != nil {
+		return p.ParentWeapon.GetWeaponUser()
+	}
+	return nil
+}
+
+func (p *WeaponPart) GetRotWeapon() hitboxes.RotatableHitBoxer {
+	if p.ParentWeapon != nil {
+		return p.ParentWeapon
+	}
+	return nil
+}
+
+// ============================================================
 // МЕТОДЫ ДЛЯ РАБОТЫ С ФИЗИКОЙ
 // ============================================================
 
@@ -182,13 +332,42 @@ func (b *BaseWeapon) UpdateAttachmentTarget() {
 	// Используем Physics.Weight для расстояния от центра
 	distanceFromCenter := (float64(userSize) / 2) * 1.3
 
-	offsetX := math.Cos(angleRad) * distanceFromCenter
-	offsetY := math.Sin(angleRad) * distanceFromCenter
+	// ===== ВЫБОР СТОРОНЫ =====
+	var offsetX, offsetY float64
+	var angleOffset float64 // ← смещение угла
+
+	switch b.AttachSide {
+	case "right":
+		offsetX = math.Cos(angleRad) * distanceFromCenter
+		offsetY = math.Sin(angleRad) * distanceFromCenter
+		angleOffset = 0
+	case "left":
+		offsetX = -math.Cos(angleRad) * distanceFromCenter
+		offsetY = -math.Sin(angleRad) * distanceFromCenter
+		angleOffset = 180
+	case "up":
+		offsetX = -math.Sin(angleRad) * distanceFromCenter
+		offsetY = math.Cos(angleRad) * distanceFromCenter
+		angleOffset = -90
+	case "down":
+		offsetX = math.Sin(angleRad) * distanceFromCenter
+		offsetY = -math.Cos(angleRad) * distanceFromCenter
+		angleOffset = 90
+	default:
+		offsetX = math.Cos(angleRad) * distanceFromCenter
+		offsetY = math.Sin(angleRad) * distanceFromCenter
+		angleOffset = 0
+	}
 
 	b.TargetX = centrX + offsetX
 	b.TargetY = centrY + offsetY
 
-	b.TargetAngle = userAngle
+	// ===== ЦЕЛЕВОЙ УГОЛ С УЧЁТОМ СТОРОНЫ =====
+	b.TargetAngle = userAngle + angleOffset
+	b.TargetAngle = math.Mod(b.TargetAngle, 360)
+	if b.TargetAngle < 0 {
+		b.TargetAngle += 360
+	}
 }
 
 // ============================================================
@@ -295,6 +474,21 @@ func (b *BaseWeapon) UpdateWeaponPosition(dt float64) {
 // РЕАЛИЗАЦИЯ hitboxes.HitBoxer
 // ============================================================
 
+// RegisterParts - добавляет все части оружия в менеджер коллизий
+func (b *BaseWeapon) RegisterParts(manager *hitboxes.CollisionManager) {
+	for _, part := range b.Parts {
+		manager.AddObject(part)
+	}
+}
+
+// RemoveParts - удаляет все части оружия из менеджера коллизий
+func (b *BaseWeapon) RemoveParts(manager *hitboxes.CollisionManager) {
+	for _, part := range b.Parts {
+		partHit, _ := any(part).(hitboxes.HitBoxer)
+		manager.RemoveObject(partHit)
+	}
+}
+
 // GetAABB - возвращает Axis-Aligned Bounding Box для коллизий
 func (w *BaseWeapon) GetAABB() (posX, posY, halfW, halfH float64) {
 	return w.PositionX, w.PositionY, w.Width / 2, w.Height / 2
@@ -321,6 +515,22 @@ func (w *BaseWeapon) ApplyPush(x, y float64) {
 	w.PositionY += y
 	if w.user != nil {
 		w.user.ApplyPush(x, y)
+	}
+}
+
+func (w *BaseWeapon) ApplyAngularPush(push float64) {
+	if push > 10 {
+		push = 10
+	} else if push < -10 {
+		push = -10
+	}
+	w.Angle -= push
+
+}
+
+func (w *WeaponPart) ApplyAngularPush(push float64) {
+	if w.ParentWeapon != nil {
+		w.ParentWeapon.ApplyAngularPush(push)
 	}
 }
 
@@ -371,6 +581,11 @@ func (b *BaseWeapon) GetOBB() (centerX, centerY, halfW, halfH, angle float64) {
 		b.Angle * math.Pi / 180
 }
 
+func (b *BaseWeapon) DestroyWeapon(manager *hitboxes.CollisionManager) {
+	manager.RemoveObject(b)
+	b.RemoveParts(manager)
+}
+
 // ============================================================
 // РЕАЛИЗАЦИЯ hitboxes.LetterSender
 // ============================================================
@@ -400,6 +615,33 @@ func (w *BaseWeapon) CanSendEffects(target any) bool {
 	return false
 }
 
+// GetEffectsForTransfer - возвращает эффекты для передачи
+func (w *WeaponPart) GetEffectsForTransfer(target any) []hitboxes.Effect {
+	var effects []hitboxes.Effect
+	for _, letter := range w.Letters {
+		if !letter.WhiteListLetters(target) || !letter.CanDeliver(target) {
+			fmt.Println(7)
+			continue
+		}
+		letter.Deliver(target)
+		for _, effect := range letter.Effects {
+			effects = append(effects, effect.Clone())
+		}
+	}
+	return effects
+}
+
+// CanSendEffects - можно ли отправить эффекты
+func (w *WeaponPart) CanSendEffects(target any) bool {
+	for _, letter := range w.Letters {
+		if letter.CanDeliver(target) && letter.WhiteListLetters(target) {
+			return true
+		}
+
+	}
+	return false
+}
+
 //============================================================================
 //ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 //============================================================================
@@ -418,6 +660,19 @@ func (b *BaseWeapon) StandartDraw(screen *ebiten.Image, camera *kamera.Camera) {
 
 	// Камера сама применит смещение
 	camera.Draw(swordImg, op, screen)
+
+	// ===== ОТРИСОВКА ЧАСТЕЙ =====
+	for _, part := range b.Parts {
+		partImg := ebiten.NewImage(int(part.Width), int(part.Height))
+		partImg.Fill(part.Collor)
+
+		partOp := &ebiten.DrawImageOptions{}
+		partOp.GeoM.Translate(-part.Width/2, -part.Height/2)
+		partOp.GeoM.Rotate(part.WorldAngle * math.Pi / 180)
+		partOp.GeoM.Translate(part.WorldX, part.WorldY)
+
+		camera.Draw(partImg, partOp, screen)
+	}
 
 	// Отрисовка точки контакта
 	if b.DebugContactActive {
@@ -450,5 +705,8 @@ func (b *BaseWeapon) StandartUpdate() {
 	b.UpdateWeaponAngle(dt)
 
 	b.UpdateWeaponPosition(dt)
+
+	// 4. Обновляем мировые координаты частей
+	b.UpdateParts(dt)
 
 }

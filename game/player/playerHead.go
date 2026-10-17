@@ -27,8 +27,9 @@ type PlayerHead struct {
 	Angle           float64
 	AngularVelocity float64
 
-	RotationDirection float64
-	RotationForce     float64
+	RotationDirection       float64
+	RotationForce           float64
+	ExternalAngularVelocity float64 // ← внешний толчок (от столкновений
 
 	BoostTimer         float64
 	BoostActive        bool
@@ -122,7 +123,14 @@ func (p *PlayerHead) Update(woroldWiev game.WorldView, manager *hitboxes.Collisi
 		p.AngularVelocity = -p.CurrentRotSpead
 	}
 
-	p.Angle += p.AngularVelocity * dt
+	// ===== ПРИМЕНЯЕМ ВНЕШНИЙ ТОЛЧОК =====
+	totalVelocity := p.AngularVelocity + p.ExternalAngularVelocity
+
+	// Применяем вращение
+	p.Angle += totalVelocity * dt
+
+	// Затухание внешнего толчка
+	p.ExternalAngularVelocity *= (1 - 5.0*dt) // быстро затухает
 
 	p.Angle = math.Mod(p.Angle, 360)
 	if p.Angle < 0 {

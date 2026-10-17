@@ -7,8 +7,34 @@ import (
 	v "github.com/setanarut/v"
 )
 
+type PartRot interface {
+	GetRotWeapon() RotatableHitBoxer
+}
+
 // / checkOBBvsOBB - проверка столкновения двух вращающихся объектов (SAT)
-func (cm *CollisionManager) checkOBBvsOBB(rot1, rot2 RotatableHitBoxer) {
+func (cm *CollisionManager) checkOBBvsOBB(a, b any) {
+
+	rot1, okA := a.(RotatableHitBoxer)
+	rot2, okB := b.(RotatableHitBoxer)
+
+	if !okA || !okB {
+		return
+	}
+
+	part1, ok1 := rot1.(PartRot)
+	part2, ok2 := rot2.(PartRot)
+
+	if ok1 || ok2 {
+
+		if ok1 && part1.GetRotWeapon().GetHitBoxID() == rot2.GetHitBoxID() {
+			return
+		} else if ok2 && part2.GetRotWeapon().GetHitBoxID() == rot1.GetHitBoxID() {
+			return
+		} else if ok1 && ok2 && part1.GetRotWeapon().GetHitBoxID() == part2.GetRotWeapon().GetHitBoxID() {
+			return
+		}
+	}
+
 	cx1, cy1, hw1, hh1, angle1 := rot1.GetOBB()
 	cx2, cy2, hw2, hh2, angle2 := rot2.GetOBB()
 
@@ -22,12 +48,6 @@ func (cm *CollisionManager) checkOBBvsOBB(rot1, rot2 RotatableHitBoxer) {
 		Normal: normal,
 		Data:   penetration,
 	}
-
-	contactX := (cx1 + cx2) / 2
-	contactY := (cy1 + cy2) / 2
-
-	rot1.Debag(contactX, contactY)
-	rot2.Debag(contactX, contactY)
 
 	cm.resolveOBBvsOBB(rot1, rot2, hit)
 }
@@ -167,16 +187,24 @@ func resolveAngleCollision(weapon1, weapon2 RotatableHitBoxer, normal v.Vec, pen
 	// Доминирующий получает меньше, слабый — больше
 	if forceDiff > 0 {
 		// Первый доминирует
-		user1.ApplyAngularPush(anglePush1 * pushForce * 0.3) // ← слабый толчок
-		user2.ApplyAngularPush(anglePush2 * pushForce * 1.5) // ← сильный толчок
+
+		weapon1.ApplyAngularPush(anglePush1 * pushForce * 0.013)
+		weapon2.ApplyAngularPush(anglePush2 * pushForce * 0.015)
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.23) // ← слабый толчок
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.45) // ← сильный толчок
 	} else if forceDiff < 0 {
 		// Второй доминирует
-		user1.ApplyAngularPush(anglePush1 * pushForce * 1.5)
-		user2.ApplyAngularPush(anglePush2 * pushForce * 0.3)
+
+		weapon1.ApplyAngularPush(anglePush1 * pushForce * 0.015)
+		weapon2.ApplyAngularPush(anglePush2 * pushForce * 0.013)
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.45)
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.23)
 	} else {
 		// Равные силы — оба получают одинаковый толчок
-		user1.ApplyAngularPush(anglePush1 * pushForce * 0.8)
-		user2.ApplyAngularPush(anglePush2 * pushForce * 0.8)
+		weapon1.ApplyAngularPush(anglePush1 * pushForce * 0.018)
+		weapon2.ApplyAngularPush(anglePush2 * pushForce * 0.018)
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.50)
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.50)
 	}
 }
 

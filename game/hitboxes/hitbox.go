@@ -1,6 +1,8 @@
 package hitboxes
 
 import (
+	"fmt"
+
 	"github.com/setanarut/coll"
 	v "github.com/setanarut/v"
 )
@@ -57,8 +59,7 @@ type RotatableHitBoxer interface {
 	SetAngle(angle float64)
 	GetTargetAngle() float64
 	GetWeaponUser() WeaponUser
-
-	Debag(x, y float64)
+	ApplyAngularPush(push float64) // толчок угла (при столкновении)
 }
 
 type WeaponUser interface {
@@ -98,7 +99,9 @@ func (cm *CollisionManager) RemoveObject(obj HitBoxer) {
 
 // Update - проверяет все коллизии между объектами
 func (cm *CollisionManager) Update() {
+	var names []string
 	for i := 0; i < len(cm.objects); i++ {
+		names = append(names, cm.objects[i].GetHitBoxID())
 		for j := i + 1; j < len(cm.objects); j++ {
 			obj1 := cm.objects[i]
 			obj2 := cm.objects[j]
@@ -123,6 +126,8 @@ func (cm *CollisionManager) Update() {
 
 		}
 	}
+
+	fmt.Println(names)
 
 }
 
@@ -260,18 +265,18 @@ func (cm *CollisionManager) resolveCollision(a, b HitBoxer, hit *coll.Hit, obj1,
 	}
 
 	// Базовая сила отталкивания
-	pushStrength := 0.3 * densityFactor
+	pushStrength := densityFactor
 
 	// Применяем отталкивание с учётом веса и плотности
 	if !a.IsStatic() {
-		pushX := -normal.X * penetration * pushStrength * pushFactorA
-		pushY := -normal.Y * penetration * pushStrength * pushFactorA
+		pushX := -normal.X * penetration * pushStrength * pushFactorA * 0.5
+		pushY := -normal.Y * penetration * pushStrength * pushFactorA * 0.5
 		a.ApplyPush(pushX, pushY)
 	}
 
 	if !b.IsStatic() {
-		pushX := normal.X * penetration * pushStrength * pushFactorB
-		pushY := normal.Y * penetration * pushStrength * pushFactorB
+		pushX := normal.X * penetration * pushStrength * pushFactorB * 0.5
+		pushY := normal.Y * penetration * pushStrength * pushFactorB * 0.5
 		b.ApplyPush(pushX, pushY)
 	}
 

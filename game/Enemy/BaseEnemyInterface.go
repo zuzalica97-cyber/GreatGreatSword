@@ -10,7 +10,6 @@ import (
 	"great-sword/game/weapons"
 	"math/rand"
 	"reflect"
-	"strconv"
 
 	"image/color"
 	"math"
@@ -92,7 +91,7 @@ type BaseEnemy struct {
 	RotationDirection float64 // -1 = влево, 0 = стоит, 1 = вправо
 	AngularVelocity   float64 // текущая угловая скорость (для инерции)
 
-	weapon weapons.Weapon
+	weapon []weapons.Weapon
 }
 
 // ============================================================
@@ -120,11 +119,7 @@ func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, max
 		Rotation:            NewRotationComponent(rotSpeed, acceleration, deceleration, smooth),
 	}
 
-	numbers := rand.Intn(10000)
-
-	strings := strconv.Itoa(numbers)
-
-	b.TagName = tag + "_" + strings
+	b.TagName = tag + string(rand.Intn(1000))
 
 	return b
 
@@ -569,7 +564,10 @@ func (b *BaseEnemy) EnemySlideMovmentFunc(friction, acceleration, dt float64) (f
 // RemoveWeaponFromCollision - удаляет оружие врага из менеджера коллизий
 func (b *BaseEnemy) RemoveWeaponFromCollision(manager *hitboxes.CollisionManager) {
 	if b.weapon != nil && manager != nil {
-		manager.RemoveObject(b.weapon)
+		for _, w := range b.weapon {
+			manager.RemoveObject(w)
+			w.RemoveParts(manager)
+		}
 	}
 }
 
@@ -577,15 +575,35 @@ func (b *BaseEnemy) RemoveWeaponFromCollision(manager *hitboxes.CollisionManager
 // РЕАЛИЗАЦИЯ game.WeaponUser ДЛЯ BaseEnemy
 // ============================================================
 
-func (b *BaseEnemy) GetWeapon() weapons.Weapon {
-	return b.weapon
+// GetWeapon - возвращает оружие игрока
+func (p *BaseEnemy) GetWeapon() weapons.Weapon {
+	for i := 0; i < len(p.weapon); i++ {
+		if i == len(p.weapon) {
+			return p.weapon[i]
+		}
+	}
+	return nil
 }
 
-func (b *BaseEnemy) SetWeapon(weapon weapons.Weapon) {
-	b.weapon = weapon
-	if weapon != nil {
-		weapon.Attach(b)
+// SetWeapon - устанавливает оружие игроку
+func (p *BaseEnemy) SetWeapon(weapon weapons.Weapon) {
+	for i := 0; i < len(p.weapon); i++ {
+		if i == len(p.weapon) {
+			p.weapon[i] = weapon
+		}
 	}
+}
+
+func (p *BaseEnemy) AddWeapon(weapon weapons.Weapon) {
+	p.weapon = append(p.weapon, weapon)
+}
+
+func (p *BaseEnemy) GetAllWeapons() []weapons.Weapon { //предаём для мэнеджера сущностей хитбоксы
+	return p.weapon
+}
+
+func (p *BaseEnemy) SetAllWeapons(weapons []weapons.Weapon) {
+	p.weapon = weapons
 }
 
 func (b *BaseEnemy) GetAngle() float64 {
@@ -619,10 +637,24 @@ func (b *BaseEnemy) SetRotationDirection(dir float64) {
 
 // ApplyAngularPush - толчок угла при столкновении
 func (b *BaseEnemy) ApplyAngularPush(push float64) {
-	// Меняем угловую скорость с учётом силы вращения
-	// Чем выше сила вращения, тем сложнее изменить направление
-	resistance := 1.0 / (b.RotationForce + 1.0)
-	b.AngularVelocity += push * resistance
+	resistance := 1.0 / (b.Rotation.ExternalAngularVelocity + 1.0)
+	effect := push * resistance
+
+	// Если толчок слишком сильно отличается от текущей скорости вращения,
+	// уменьшаем его, чтобы переход был постепенным
+	currentExternal := b.Rotation.ExternalAngularVelocity
+	diff := effect - currentExternal
+
+	// Максимальный разрыв между толчком и текущей внешней скоростью
+	maxDiff := 20.0 // ← предел разрыва (подбери под свою игру)
+	if diff > maxDiff {
+		effect = currentExternal + maxDiff
+	} else if diff < -maxDiff {
+		effect = currentExternal - maxDiff
+	}
+
+	// Добавляем к внешнему толчку, а не к основной скорости
+	b.Rotation.ExternalAngularVelocity -= effect
 }
 
 // DeathScan - проверяет смерть врага и удаляет его из слайса
@@ -649,13 +681,29 @@ func DeathScan[T any](manager *hitboxes.CollisionManager, enemy *BaseEnemy, slic
 	return slice, false
 }
 
+func (b *BaseEnemy) OnDeath(manager *hitboxes.CollisionManager, obj hitboxes.HitBoxer) {
+	if manager != nil {
+		manager.RemoveObject(obj)
+		if b.weapon != nil {
+			b.RemoveWeaponFromCollision(manager)
+		}
+
+	}
+
+	common.Score++
+	player.ActivateBoost()
+
+}
+
 func (b *BaseEnemy) StUpdateCoolDown(dt float64, worldView game.WorldView, manager *hitboxes.CollisionManager) {
 	// Обновляем вращение
 	b.Rotation.UpdateRotation(1.0, dt)
 
 	// Обновляем оружие (если есть)
 	if b.weapon != nil {
-		b.weapon.Update(worldView, manager)
+		for _, w := range b.weapon {
+			w.Update(worldView, manager)
+		}
 	}
 
 	// === ОБНОВЛЕНИЕ КУЛДАУНА ===
@@ -704,7 +752,9 @@ func (b *BaseEnemy) StDraw(screen *ebiten.Image, camera *kamera.Camera) {
 	}
 
 	if b.weapon != nil {
-		b.weapon.Draw(screen, camera)
+		for _, w := range b.weapon {
+			w.Draw(screen, camera)
+		}
 	}
 
 }
