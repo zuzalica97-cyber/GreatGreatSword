@@ -187,16 +187,24 @@ func resolveAngleCollision(weapon1, weapon2 RotatableHitBoxer, normal v.Vec, pen
 	// Доминирующий получает меньше, слабый — больше
 	if forceDiff > 0 {
 		// Первый доминирует
-		user1.ApplyAngularPush(anglePush1 * pushForce * 0.0013) // ← слабый толчок
-		user2.ApplyAngularPush(anglePush2 * pushForce * 0.0015) // ← сильный толчок
+
+		weapon1.ApplyAngularPush(anglePush1 * pushForce * 0.013)
+		weapon2.ApplyAngularPush(anglePush2 * pushForce * 0.015)
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.23) // ← слабый толчок
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.45) // ← сильный толчок
 	} else if forceDiff < 0 {
 		// Второй доминирует
-		user1.ApplyAngularPush(anglePush1 * pushForce * 0.0015)
-		user2.ApplyAngularPush(anglePush2 * pushForce * 0.0013)
+
+		weapon1.ApplyAngularPush(anglePush1 * pushForce * 0.015)
+		weapon2.ApplyAngularPush(anglePush2 * pushForce * 0.013)
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.45)
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.23)
 	} else {
 		// Равные силы — оба получают одинаковый толчок
-		user1.ApplyAngularPush(anglePush1 * pushForce * 0.0018)
-		user2.ApplyAngularPush(anglePush2 * pushForce * 0.0018)
+		weapon1.ApplyAngularPush(anglePush1 * pushForce * 0.018)
+		weapon2.ApplyAngularPush(anglePush2 * pushForce * 0.018)
+		user1.ApplyAngularPush(anglePush1 * pushForce * 0.50)
+		user2.ApplyAngularPush(anglePush2 * pushForce * 0.50)
 	}
 }
 

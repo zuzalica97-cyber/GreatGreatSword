@@ -79,11 +79,6 @@ func (enemy *OneBerserk) Update(worldView game.WorldView, manager *hitboxes.Coll
 
 	playerX, playerY := getPlayerPosition(worldView)
 
-	// Проверка смерти
-
-	// === ОБНОВЛЕНИЕ КУЛДАУНА ===
-	enemy.StUpdateCoolDown(dt, worldView, manager)
-
 	// === УСТАНОВКА ЦЕЛИ ===
 	enemy.SetTarget(playerX, playerY)
 
@@ -141,7 +136,8 @@ func (b *OneBerserk) Draw(screen *ebiten.Image, camera *kamera.Camera) {
 // ============================================================
 
 func (b *OneBerserk) Tag() string {
-	return b.Tag()
+
+	return b.TagName
 }
 
 func (b *OneBerserk) IsActive() bool {

@@ -45,6 +45,9 @@ type Weapon interface {
 	// Проризание (насколько глубоко оружие входит в объект)
 	GetPenetration() float64
 	SetPenetration(penetration float64)
+
+	DestroyWeapon(manager *hitboxes.CollisionManager)
+	RemoveParts(manager *hitboxes.CollisionManager)
 }
 
 // ============================================================

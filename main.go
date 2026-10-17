@@ -35,9 +35,10 @@ type Game struct {
 	cameraSmoothX, cameraSmoothY float64
 	CollisionManager             *hitboxes.CollisionManager
 	frameCounter                 float64 // ВРЕМЕННО
+	entityManager                *game.EntityManager
 }
 
-func NewGame(world *gameW.World, manager *hitboxes.CollisionManager) *Game {
+func NewGame(world *gameW.World, manager *hitboxes.CollisionManager, EntityManager *game.EntityManager) *Game {
 	var g *Game
 	var err error
 	g = &Game{
@@ -45,6 +46,7 @@ func NewGame(world *gameW.World, manager *hitboxes.CollisionManager) *Game {
 		MainKamera:       *kamera.NewCamera(0, 0, common.ScreenWidth, common.ScreenHeight),
 		CollisionManager: manager,
 		frameCounter:     1.0,
+		entityManager:    EntityManager,
 	}
 
 	g.lowerTexture, _, err = ebitenutil.NewImageFromFile("assets/poll.png") //НЕ РАБОТАЕТ СДЕСЬ
@@ -80,29 +82,22 @@ func (g *Game) ResetGame() {
 				sword.Position.Py = sword.TargetY
 				sword.Angle = sword.TargetAngle
 
-				for _, entity := range g.world.SearchEntities("pathetic") {
-					path := entity.(*enemy.Pathetic)
+				for _, entity := range g.world.SearchEntities("hater") {
+					hater := entity.(*enemy.Haters)
 
-					for i, _ := range path.Paths {
-						g.CollisionManager.RemoveObject(path.Paths[i]) //Удаляем из обектов коллизии
+					for i, _ := range hater.HatersMass {
+						g.CollisionManager.RemoveObject(hater.HatersMass[i]) //Удаляем из обектов коллизии
 					}
 
-					path.Paths = make([]*enemy.OnePath, 0)
+					hater.HatersMass = make([]*enemy.Haits, 0)
 
-					for _, entity := range g.world.SearchEntities("hater") {
-						hater := entity.(*enemy.Haters)
-
-						for i, _ := range hater.HatersMass {
-							g.CollisionManager.RemoveObject(hater.HatersMass[i]) //Удаляем из обектов коллизии
-						}
-
-						hater.HatersMass = make([]*enemy.Haits, 0)
-
-					}
 				}
+
 			}
 		}
 	}
+
+	g.entityManager.RemoveAllEnemy(g.CollisionManager)
 
 }
 
@@ -227,9 +222,6 @@ func main() {
 	world.AddEntity(leg)
 
 	world.AddEntity(
-		enemy.NewPathetic(),
-	)
-	world.AddEntity(
 		enemy.NawHaters(),
 	)
 
@@ -240,6 +232,9 @@ func main() {
 	em.RegisterEnemyType("berserk", func(x, y float64) game.Enemy {
 		return enemy.SpawnBreserk(x, y, manager)
 	})
+	em.RegisterEnemyType("pathetic", func(x, y float64) game.Enemy {
+		return enemy.SpawnPathetic(x, y, manager)
+	})
 
 	world.AddEntity(em)
 
@@ -247,13 +242,13 @@ func main() {
 
 	card := game.NewRoomCard()
 
-	card.AddEnemy("berserk", 300, 300)
-	card.AddEnemy("berserk", 500, 400)
 	card.AddEnemy("berserk", 700, 200)
+
+	card.AddEnemy("pathetic", 200, 700)
 
 	em.SpawnFromRoom(card)
 
-	g := NewGame(world, manager)
+	g := NewGame(world, manager, em)
 
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)

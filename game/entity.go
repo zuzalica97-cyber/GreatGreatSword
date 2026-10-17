@@ -38,9 +38,10 @@ type Enemy interface {
 	GetPosition() (float64, float64)
 	SetPosition(x, y float64)
 	GetSize() int
+	StUpdateCoolDown(dt float64, worldView WorldView, manager *hitboxes.CollisionManager)
 
 	// Смерть
-	OnDeath(*hitboxes.CollisionManager) // что делать при смерти
+	OnDeath(manager *hitboxes.CollisionManager, obj hitboxes.HitBoxer) // что делать при смерти
 
 }
 

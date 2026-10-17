@@ -39,7 +39,7 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser, sid
 			common.SwordAttachmentWidth, // ширина
 			30,                          // высота
 			10.5,                        // плотность (оригинальная)
-			0.5,                         // проризание из 10
+			-0.5,                        // проризание из 10
 			WeaponPhysics{
 				Weight:              7.0,   // оригинальный вес
 				Friction:            0.5,   // стандартное трение
@@ -48,7 +48,7 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser, sid
 				AngularAcceleration: 720.0, // ускорение вращения
 				Damping:             0.9,   // демпфирование
 				SmoothingPos:        0.1,   //сила пиритаскивания оружия
-				SmoothingReturn:     0.1,   // скорость возврата угла к цели
+				SmoothingReturn:     0.01,  // скорость возврата угла к цели
 			},
 			side,
 			"blueSwordCopy",
@@ -96,6 +96,7 @@ func NewBlueSwordWeapon(manager *hitboxes.CollisionManager, user WeaponUser, sid
 	weapon.Parts = []*WeaponPart{head, garda}
 
 	manager.AddObject(weapon)
+	manager.AddObject(head)
 
 	return weapon
 }

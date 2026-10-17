@@ -75,23 +75,28 @@ func (em *EntityManager) SpawnFromRoom(room *RoomCard) {
 // ============================================================
 
 func (em *EntityManager) Update(world WorldView, manager *hitboxes.CollisionManager) bool {
+
 	// 1. Обновляем игрока
 	if em.player != nil {
 		em.player.Update(world, manager)
 	}
 
-	// 2. Обновляем врагов
-	for i := 0; i < len(em.enemies); i++ {
-		enemy := em.enemies[i]
+	if em.enemies != nil {
 
-		// Если враг мёртв — удаляем его из всех систем
-		if !enemy.IsActive() || enemy.GetHealth() <= 0 {
-			em.removeEnemy(i, manager)
-			i--
-			continue
+		// 2. Обновляем врагов
+		for i := 0; i < len(em.enemies); i++ {
+			enemy := em.enemies[i]
+
+			// Если враг мёртв — удаляем его из всех систем
+			if !enemy.IsActive() || enemy.GetHealth() <= 0 {
+				em.RemoveEnemy(i, manager)
+				i--
+				continue
+			}
+			enemy.StUpdateCoolDown(1.0/60.0, world, manager)
+
+			enemy.Update(world, manager)
 		}
-
-		enemy.Update(world, manager)
 	}
 
 	return false
@@ -102,12 +107,25 @@ func (em *EntityManager) Update(world WorldView, manager *hitboxes.CollisionMana
 // ============================================================
 
 // removeEnemy - удаляет врага из всех систем
-func (em *EntityManager) removeEnemy(index int, manager *hitboxes.CollisionManager) {
+func (em *EntityManager) RemoveEnemy(index int, manager *hitboxes.CollisionManager) {
 	enemy := em.enemies[index]
 	// 2. Вызываем OnDeath (счёт, буст и т.д.)
-	enemy.OnDeath(manager)
+	enemy.OnDeath(manager, enemy)
 	// 3. Удаляем из слайса врагов
 	em.enemies = append(em.enemies[:index], em.enemies[index+1:]...)
+	em.entities = append(em.entities[:index], em.entities[index+1:]...)
+
+}
+
+func (em *EntityManager) RemoveAllEnemy(manager *hitboxes.CollisionManager) {
+	for i := 0; i < len(em.enemies); i++ {
+		enemy := em.enemies[i]
+
+		// 2. Вызываем OnDeath (счёт, буст и т.д.)
+		enemy.OnDeath(manager, enemy)
+	}
+	em.enemies = nil
+	em.entities = nil
 }
 
 // ============================================================

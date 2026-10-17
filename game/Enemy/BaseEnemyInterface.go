@@ -119,7 +119,7 @@ func NewBaseEnemy(x, y float64, size int, health float64, damage int, speed, max
 		Rotation:            NewRotationComponent(rotSpeed, acceleration, deceleration, smooth),
 	}
 
-	b.TagName = tag + "_" + string(rand.Intn(1000))
+	b.TagName = tag + string(rand.Intn(1000))
 
 	return b
 
@@ -566,6 +566,7 @@ func (b *BaseEnemy) RemoveWeaponFromCollision(manager *hitboxes.CollisionManager
 	if b.weapon != nil && manager != nil {
 		for _, w := range b.weapon {
 			manager.RemoveObject(w)
+			w.RemoveParts(manager)
 		}
 	}
 }
@@ -636,8 +637,21 @@ func (b *BaseEnemy) SetRotationDirection(dir float64) {
 
 // ApplyAngularPush - толчок угла при столкновении
 func (b *BaseEnemy) ApplyAngularPush(push float64) {
-	resistance := 1.0 / (b.RotationForce + 1.0)
+	resistance := 1.0 / (b.Rotation.ExternalAngularVelocity + 1.0)
 	effect := push * resistance
+
+	// Если толчок слишком сильно отличается от текущей скорости вращения,
+	// уменьшаем его, чтобы переход был постепенным
+	currentExternal := b.Rotation.ExternalAngularVelocity
+	diff := effect - currentExternal
+
+	// Максимальный разрыв между толчком и текущей внешней скоростью
+	maxDiff := 20.0 // ← предел разрыва (подбери под свою игру)
+	if diff > maxDiff {
+		effect = currentExternal + maxDiff
+	} else if diff < -maxDiff {
+		effect = currentExternal - maxDiff
+	}
 
 	// Добавляем к внешнему толчку, а не к основной скорости
 	b.Rotation.ExternalAngularVelocity -= effect
@@ -667,12 +681,13 @@ func DeathScan[T any](manager *hitboxes.CollisionManager, enemy *BaseEnemy, slic
 	return slice, false
 }
 
-func (b *BaseEnemy) OnDeath(manager *hitboxes.CollisionManager) {
+func (b *BaseEnemy) OnDeath(manager *hitboxes.CollisionManager, obj hitboxes.HitBoxer) {
 	if manager != nil {
-		manager.RemoveObject(b)
+		manager.RemoveObject(obj)
 		if b.weapon != nil {
 			b.RemoveWeaponFromCollision(manager)
 		}
+
 	}
 
 	common.Score++

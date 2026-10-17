@@ -484,7 +484,8 @@ func (b *BaseWeapon) RegisterParts(manager *hitboxes.CollisionManager) {
 // RemoveParts - удаляет все части оружия из менеджера коллизий
 func (b *BaseWeapon) RemoveParts(manager *hitboxes.CollisionManager) {
 	for _, part := range b.Parts {
-		manager.RemoveObject(part)
+		partHit, _ := any(part).(hitboxes.HitBoxer)
+		manager.RemoveObject(partHit)
 	}
 }
 
@@ -514,6 +515,22 @@ func (w *BaseWeapon) ApplyPush(x, y float64) {
 	w.PositionY += y
 	if w.user != nil {
 		w.user.ApplyPush(x, y)
+	}
+}
+
+func (w *BaseWeapon) ApplyAngularPush(push float64) {
+	if push > 10 {
+		push = 10
+	} else if push < -10 {
+		push = -10
+	}
+	w.Angle -= push
+
+}
+
+func (w *WeaponPart) ApplyAngularPush(push float64) {
+	if w.ParentWeapon != nil {
+		w.ParentWeapon.ApplyAngularPush(push)
 	}
 }
 
@@ -562,6 +579,11 @@ func (b *BaseWeapon) GetOBB() (centerX, centerY, halfW, halfH, angle float64) {
 		b.Width / 2,
 		b.Height / 2,
 		b.Angle * math.Pi / 180
+}
+
+func (b *BaseWeapon) DestroyWeapon(manager *hitboxes.CollisionManager) {
+	manager.RemoveObject(b)
+	b.RemoveParts(manager)
 }
 
 // ============================================================

@@ -1,6 +1,8 @@
 package hitboxes
 
 import (
+	"fmt"
+
 	"github.com/setanarut/coll"
 	v "github.com/setanarut/v"
 )
@@ -57,6 +59,7 @@ type RotatableHitBoxer interface {
 	SetAngle(angle float64)
 	GetTargetAngle() float64
 	GetWeaponUser() WeaponUser
+	ApplyAngularPush(push float64) // толчок угла (при столкновении)
 }
 
 type WeaponUser interface {
@@ -96,7 +99,9 @@ func (cm *CollisionManager) RemoveObject(obj HitBoxer) {
 
 // Update - проверяет все коллизии между объектами
 func (cm *CollisionManager) Update() {
+	var names []string
 	for i := 0; i < len(cm.objects); i++ {
+		names = append(names, cm.objects[i].GetHitBoxID())
 		for j := i + 1; j < len(cm.objects); j++ {
 			obj1 := cm.objects[i]
 			obj2 := cm.objects[j]
@@ -121,6 +126,8 @@ func (cm *CollisionManager) Update() {
 
 		}
 	}
+
+	fmt.Println(names)
 
 }
 

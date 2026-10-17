@@ -160,6 +160,7 @@ func (p *PlayerLeg) Update(worldView game.WorldView, manager *hitboxes.Collision
 		if p.Weapon != nil {
 			for _, w := range p.Weapon {
 				manager.RemoveObject(w)
+				w.RemoveParts(manager)
 			}
 			p.weaponBage = p.GetAllWeapons()
 			p.SetAllWeapons(nil)
@@ -358,8 +359,21 @@ func (b *PlayerLeg) SetRotationDirection(dir float64) {
 
 // ApplyAngularPush - толчок угла при столкновении
 func (b *PlayerLeg) ApplyAngularPush(push float64) {
-	resistance := 1.0 / (b.RotationForce + 1.0)
+	resistance := 1.0 / (b.Head.ExternalAngularVelocity + 1.0)
 	effect := push * resistance
+
+	// Если толчок слишком сильно отличается от текущей скорости вращения,
+	// уменьшаем его, чтобы переход был постепенным
+	currentExternal := b.AngularVelocity
+	diff := effect - currentExternal
+
+	// Максимальный разрыв между толчком и текущей внешней скоростью
+	maxDiff := 400.0 // ← предел разрыва (подбери под свою игру)
+	if diff > maxDiff {
+		effect = currentExternal + maxDiff
+	} else if diff < -maxDiff {
+		effect = currentExternal - maxDiff
+	}
 
 	// Добавляем к внешнему толчку, а не к основной скорости
 	b.Head.ExternalAngularVelocity -= effect

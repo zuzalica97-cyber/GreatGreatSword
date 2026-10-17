@@ -3,16 +3,17 @@ package enemy
 import (
 	"great-sword/game"
 	enemyabilities "great-sword/game/abilities/enemyAbilities"
+	"great-sword/game/common"
 	"great-sword/game/hitboxes"
 	"great-sword/game/weapons"
 	"image/color"
-	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/setanarut/kamera/v2"
 )
 
-var _ game.Entity = (*Pathetic)(nil)
+var _ game.Enemy = (*OnePath)(nil)
+var _ game.Entity = (*OnePath)(nil)
 var _ hitboxes.HitBoxer = (*OnePath)(nil)
 var _ enemyabilities.EnemyUser = (*OnePath)(nil)
 var _ hitboxes.LetterReceiver = (*OnePath)(nil)
@@ -21,60 +22,41 @@ var _ hitboxes.LetterReceiver = (*OnePath)(nil)
 // ОСНОВНАЯ СТРУКТУРА ВРАГА
 // ============================================================
 
-type Pathetic struct {
-	Paths []*OnePath
-}
-
 type OnePath struct {
-	*BaseEnemy // ← ВСТРАИВАНИЕ! Все методы BaseEnemy доступны
+	*BaseEnemy
 
-	// Специфичные поля (только то, чего нет в BaseEnemy)
 	PathericCooldownActive bool
 	PathericCooldownTimer  float64
 
-	// Способности
 	Abilities []enemyabilities.EnemyAbility
-
-	// Кэш для Target (позиция игрока) - уже есть в BaseEnemy
-}
-
-// ============================================================
-// КОНСТРУКТОР
-// ============================================================
-
-func NewPathetic() *Pathetic {
-	return &Pathetic{
-		Paths: make([]*OnePath, 0),
-	}
 }
 
 // ============================================================
 // СОЗДАНИЕ ВРАГА
 // ============================================================
 
-func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManager) {
+func SpawnPathetic(x, y float64, manager *hitboxes.CollisionManager) *OnePath {
 	enemy := &OnePath{
 		BaseEnemy: NewBaseEnemy(
 			x, y,
 			65,   // size
-			4000, // helth
+			4000, // health
 			5,    // damage
 			100,  // speed
 			300,  // maxSpeed
-			0.7,  // чем ближе к 1, тем дольше скользит
-			70.0, // как быстро разгоняется
+			0.7,  // трение
+			70.0, // ускорение
 			color.RGBA{150, 150, 150, 255},
 			2,
 			0.6,
 			"pathetic",
-			180.0, // 360 градусов в секунду
-			720.0, // ускорение
-			540.0, // замедление
-			0.15,  // плавность
+			180.0,
+			720.0,
+			540.0,
+			0.15,
 		),
 	}
 
-	// Добавляем способности
 	enemy.Abilities = []enemyabilities.EnemyAbility{
 		enemyabilities.NewChaseAbility(enemy.Speed, enemy.MaxSpeed, 600, 0.01),
 		enemyabilities.NewDashAbility(250, 450, 2, 0.5),
@@ -82,83 +64,79 @@ func (p *Pathetic) SpawnPathetic(x, y float64, manager *hitboxes.CollisionManage
 
 	enemy.AddWeapon(weapons.NewHammer(enemy, "left", manager))
 
-	p.Paths = append(p.Paths, enemy)
 	if manager != nil {
 		manager.AddObject(enemy)
 	}
-}
-
-// PatheticCooldown - специфичная для этого врага
-func PatheticCooldown(enemy *OnePath) {
-	enemy.CooldownActive = true
-	enemy.CooldownTimer = 2.0
+	return enemy
 }
 
 // ============================================================
 // ОБНОВЛЕНИЕ
 // ============================================================
 
-func (p *Pathetic) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
+func (enemy *OnePath) Update(worldView game.WorldView, manager *hitboxes.CollisionManager) bool {
 	dt := 1.0 / 60.0
 
-	playerX, playerY := getPlayerPosition(worldView) //ДЗ делать мечи у партивников. и делать их крутищихся
+	playerX, playerY := getPlayerPosition(worldView)
 
-	if len(p.Paths) < 0 {
-		x, y := RangomSpawnInWall(50)
-		p.SpawnPathetic(x, y, manager)
+	// === УСТАНОВКА ЦЕЛИ ===
+	enemy.SetTarget(playerX, playerY)
+
+	// === ОБНОВЛЕНИЕ СПОСОБНОСТЕЙ ===
+	enemy.CurrentSpeed = enemy.Speed
+
+	for _, ability := range enemy.Abilities {
+		ability.Activate(enemy, worldView)
+		ability.Update(enemy, dt, manager)
 	}
 
-	for i := 0; i < len(p.Paths); i++ {
-		enemy := p.Paths[i]
+	// === ОБНОВЛЕНИЕ ЭФФЕКТОВ ===
+	enemy.UpdateEffects(dt)
 
-		// Проверка смерти
-		var died bool
-		p.Paths, died = DeathScan(manager, enemy.BaseEnemy, p.Paths, i)
-		if died {
-			i-- // корректируем индекс после удаления
-			continue
-		}
+	enemy.StMovment(dt)
 
-		enemy.StUpdateCoolDown(dt, worldView, manager)
+	// === КУЛДАУН (ОТТАЛКИВАНИЕ) ===
+	if enemy.CooldownActive {
+		enemy.CurrentSpeed = -enemy.CurrentSpeed / 3
+	}
 
-		// === УСТАНОВКА ЦЕЛИ ===
-		enemy.SetTarget(playerX, playerY)
-
-		enemy.CurrentSpeed = enemy.Speed
-
-		// === ОБНОВЛЕНИЕ СПОСОБНОСТЕЙ ===
-		for _, ability := range enemy.Abilities {
-			ability.Activate(enemy, worldView)
-			ability.Update(enemy, dt, manager)
-		}
-
-		// === ОБНОВЛЕНИЕ ЭФФЕКТОВ ===
-		enemy.UpdateEffects(dt)
-
-		if enemy.CooldownActive {
-			enemy.CurrentSpeed = -enemy.CurrentSpeed / 3
-		}
-
-		enemy.StMovment(dt)
+	// === ГРАНИЦЫ КОМНАТЫ ===
+	if enemy.X < 0 {
+		enemy.X = 0
+		enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
+	}
+	if enemy.X > common.RoomWidth-float64(enemy.Size) {
+		enemy.X = common.RoomWidth - float64(enemy.Size)
+		enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
+	}
+	if enemy.Y < 0 {
+		enemy.Y = 0
+		enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
+	}
+	if enemy.Y > common.RoomHeight-float64(enemy.Size) {
+		enemy.Y = common.RoomHeight - float64(enemy.Size)
+		enemy.CurrentSpeed = -enemy.CurrentSpeed * 0.5
 	}
 
 	return false
 }
 
-func (b *Pathetic) Draw(screen *ebiten.Image, camera *kamera.Camera) {
-	for _, b := range b.Paths {
-		b.StDraw(screen, camera)
-	}
+// ============================================================
+// ОТРИСОВКА
+// ============================================================
+
+func (b *OnePath) Draw(screen *ebiten.Image, camera *kamera.Camera) {
+	b.StDraw(screen, camera)
 }
 
 // ============================================================
 // ИНТЕРФЕЙС game.Entity
 // ============================================================
 
-func (p *Pathetic) Tag() string {
-	return "pathetic" + string(rand.Intn(1000))
+func (b *OnePath) Tag() string {
+	return b.TagName
 }
 
-func (p *Pathetic) IsActive() bool {
-	return true
+func (b *OnePath) IsActive() bool {
+	return b.Active
 }
